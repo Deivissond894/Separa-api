@@ -1,0 +1,17 @@
+{
+  "name": "separa-api",
+  "version": "1.0.0",
+  "description": "Sistema de separação de pedidos com Firebase",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "firebase-admin": "^12.0.0",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5"
+  }
+}

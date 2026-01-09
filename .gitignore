@@ -1,0 +1,8 @@
+node_modules/
+.env
+.env.local
+.DS_Store
+*.log
+dist/
+build/
+separacao-51e82-firebase-adminsdk-fbsvc-ff690cda13.json

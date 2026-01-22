@@ -37,6 +37,7 @@ button{border:none;cursor:pointer}
 .btn-limpar{background:#C0392B;color:#fff}
 .btn-andar{background:#6C3483;color:#fff}
 .btn-limpar-hist{background:#C0392B;color:#fff;margin-top:10px}
+.btn-ranked{background:#0B5F2E;color:#fff}
 
 /* REFERÊNCIA OPERADORES */
 .operadores-ref{
@@ -176,6 +177,8 @@ body.modo-tv .status-text{font-size:2.3vw}
   margin-top:10px;
 }
 
+.ranked-box{background:#f2f2f2;padding:10px;border-radius:6px;margin-top:10px;font-size:15px}
+
 /* INDICADOR OPERADOR */
 .operador-ativo{
   font-weight:bold;
@@ -215,6 +218,7 @@ body.modo-tv .status-text{font-size:2.3vw}
   <input id="scanner" placeholder="Aguardando bipe..." disabled>
 
   <button class="btn-relatorio" onclick="abrirHistorico()">Ver relatório</button>
+  <button class="btn-ranked" onclick="abrirRanked()">Ranking</button>
   <button class="btn-andar" onclick="abrirAndar()">Primeiro andar</button>
   <button class="btn-limpar" onclick="limparPedidos()">Limpar pedidos ativos</button>
 
@@ -255,6 +259,19 @@ body.modo-tv .status-text{font-size:2.3vw}
   </div>
 </div>
 
+<!-- MODAL RANKING -->
+<div class="modal" id="modalRanked">
+  <div class="modal-content">
+    <div class="modal-header">
+      <strong>Ranking Mensal Automático</strong>
+      <span class="close" onclick="fecharRanked()">✖</span>
+    </div>
+    <div id="rankedAtual"></div>
+    <div id="rankedHistorico"></div>
+    <button class="btn-limpar-hist" onclick="limparRanked()">Zerar ranking</button>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
@@ -290,6 +307,8 @@ const SENHA = "1617";
 
 let pedidos = {};
 let relatorio = [];
+let ranked = JSON.parse(localStorage.getItem("rankedMes") || "{\"n1\":{},\"n2\":{}}");
+let historicoRanked = JSON.parse(localStorage.getItem("rankedHistorico") || "[]");
 
 let operadorAtual = null;
 let operador2 = null;
@@ -373,6 +392,14 @@ scanner.addEventListener("keydown", async (e) => {
           finalizou: operadorAtual,
           separadores: [...separadoresAtuais, operadorAtual]
         }, { merge: true });
+        
+        // Adiciona pontuação
+        const iniciouOp = pedidos[c].iniciou;
+        ranked.n1[iniciouOp] = (ranked.n1[iniciouOp] || 0) + 1;
+        if (iniciouOp !== operadorAtual) {
+          ranked.n1[operadorAtual] = (ranked.n1[operadorAtual] || 0) + 1;
+        }
+        salvarRanking();
       } else if (statusAtual === "confirmado") {
         // confirmado → separacao (volta) - muda o "iniciou" para o operador atual
         await setDoc(doc(db, "pedidosAtivos", c), {
@@ -427,28 +454,54 @@ scanner2.addEventListener("keydown", async (e) => {
     scanner2.value = "";
     if (!c || !operador2) return;
 
+    const agora = Date.now();
+
     if (!pedidos[c]) {
       await setDoc(doc(db, "pedidosAtivos", c), {
         status: "separacao"
       });
-    } else {
-      // Se estiver em "confirmado", volta pra "separacao"
-      if (pedidos[c].status === "confirmado") {
-        await setDoc(doc(db, "pedidosAtivos", c), {
-          status: "separacao"
-        }, { merge: true });
-      }
     }
 
-    await setDoc(doc(db, "pedidosAtivos", c), {
-      andar2: { operador: operador2 }
-    }, { merge: true });
+    // Verificar e atualizar status/pontuação baseado no estado do andar2
+    if (!pedidos[c].andar2 || !pedidos[c].andar2.finalizou) {
+      // 1º bip do andar2: marca como iniciado
+      await setDoc(doc(db, "pedidosAtivos", c), {
+        andar2: { 
+          inicio: operador2,
+          finalizou: null,
+          jaPontuou: false
+        }
+      }, { merge: true });
+    } else {
+      // 2º+ bip do andar2: marca como confirmado e pontuação
+      const inicioAndar = pedidos[c].andar2.inicio;
+      ranked.n2[inicioAndar] = (ranked.n2[inicioAndar] || 0) + 1;
+      if (inicioAndar !== operador2) {
+        ranked.n2[operador2] = (ranked.n2[operador2] || 0) + 1;
+      }
+      salvarRanking();
+
+      await setDoc(doc(db, "pedidosAtivos", c), {
+        andar2: { 
+          inicio: inicioAndar,
+          finalizou: operador2,
+          jaPontuou: true
+        }
+      }, { merge: true });
+    }
+
+    // Se pedido estava confirmado, volta para separação
+    if (pedidos[c] && pedidos[c].status === "confirmado") {
+      await setDoc(doc(db, "pedidosAtivos", c), {
+        status: "separacao"
+      }, { merge: true });
+    }
 
     await addDoc(collection(db, "relatorioPedidos"), {
       pedido: c,
       tipo: "n2",
       operador: operador2,
-      data: Date.now()
+      data: agora
     });
 
     operador2 = null;
@@ -510,7 +563,10 @@ function render() {
         <div class="status-text">Status: ${statusTexto}</div>
         ${p.iniciou ? `<div class="info-operador">Iniciou: ${p.iniciou}</div>` : ""}
         ${p.finalizou ? `<div class="info-operador">Finalizou: ${p.finalizou}</div>` : ""}
-        ${p.andar2 ? `<div class="info-operador">1º Andar: ${p.andar2.operador}</div>` : ""}
+        ${p.andar2 ? `
+          <div class="info-operador">1º Andar — Iniciou: ${p.andar2.inicio}</div>
+          ${p.andar2.finalizou ? `<div class="info-operador">1º Andar — Finalizou: ${p.andar2.finalizou}</div>` : ""}
+        ` : ""}
       `;
       cards.appendChild(d);
     });
@@ -519,6 +575,12 @@ function render() {
 
 // Expor render globalmente
 window.render = render;
+
+// ===== SALVAR RANKING =====
+function salvarRanking() {
+  localStorage.setItem("rankedMes", JSON.stringify(ranked));
+  localStorage.setItem("rankedHistorico", JSON.stringify(historicoRanked));
+}
 
 // ===== TIMER =====
 setInterval(() => {
@@ -685,6 +747,52 @@ window.limparPedidos = function() {
 window.toggleTV = function() {
   document.body.classList.toggle("modo-tv");
   window.render();
+}
+window.abrirRanked = function() {
+  if(prompt("Senha:")!=="1617") return;
+  document.getElementById("modalRanked").style.display="flex";
+  window.renderRanked();
+}
+window.fecharRanked = function() {
+  document.getElementById("modalRanked").style.display="none";
+}
+window.limparRanked = function() {
+  if(prompt("Senha:")!=="1617") {
+    return;
+  }
+  ranked={ n1:{}, n2:{} };
+  localStorage.setItem("rankedMes", JSON.stringify(ranked));
+  window.renderRanked();
+}
+window.listarRank = function(obj){
+  let html="<div class='ranked-box'>";
+  const lista=Object.entries(obj).sort((a,b)=>b[1]-a[1]);
+  lista.forEach(([nome,pontos])=> html+=`${nome}: ${pontos}<br>`);
+  html+="</div>";
+  return html;
+}
+window.renderRanked = function(){
+  const box=document.getElementById("rankedAtual");
+  const hist=document.getElementById("rankedHistorico");
+
+  box.innerHTML=`
+    <h3>Mês Atual — Térreo</h3>
+    ${window.listarRank(ranked.n1)}
+    <h3>Mês Atual — 1º Andar</h3>
+    ${window.listarRank(ranked.n2)}
+  `;
+
+  hist.innerHTML="<h3>Histórico Mensal</h3>";
+
+  historicoRanked.forEach(reg=>{
+    hist.innerHTML+=`
+      <div class="ranked-box">
+        <strong>${reg.mes}</strong><br><br>
+        <u>Térreo</u><br>${window.listarRank(reg.ranking.n1)}
+        <u>1º Andar</u><br>${window.listarRank(reg.ranking.n2)}
+      </div>
+    `;
+  });
 }
 </script>
 

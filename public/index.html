@@ -307,8 +307,8 @@ const SENHA = "1617";
 
 let pedidos = {};
 let relatorio = [];
-let ranked = JSON.parse(localStorage.getItem("rankedMes") || "{\"n1\":{},\"n2\":{}}");
-let historicoRanked = JSON.parse(localStorage.getItem("rankedHistorico") || "[]");
+let ranked = { n1: {}, n2: {} };
+let historicoRanked = [];
 
 let operadorAtual = null;
 let operador2 = null;
@@ -339,6 +339,20 @@ onSnapshot(query(collection(db, "relatorioPedidos"), orderBy("data", "desc")), (
   relatorio = [];
   snapshot.forEach(doc => {
     relatorio.push(doc.data());
+  });
+});
+
+// ===== LISTENERS RANKING =====
+onSnapshot(doc(db, "ranking", "mesAtual"), (snapshot) => {
+  if (snapshot.exists()) {
+    ranked = snapshot.data();
+  }
+});
+
+onSnapshot(collection(db, "historicoRanking"), (snapshot) => {
+  historicoRanked = [];
+  snapshot.forEach(doc => {
+    historicoRanked.push(doc.data());
   });
 });
 
@@ -577,9 +591,21 @@ function render() {
 window.render = render;
 
 // ===== SALVAR RANKING =====
-function salvarRanking() {
-  localStorage.setItem("rankedMes", JSON.stringify(ranked));
-  localStorage.setItem("rankedHistorico", JSON.stringify(historicoRanked));
+async function salvarRanking() {
+  try {
+    await setDoc(doc(db, "ranking", "mesAtual"), ranked, { merge: true });
+  } catch (error) {
+    console.error("Erro ao salvar ranking:", error);
+  }
+}
+
+// ===== LIMPAR RANKING =====
+async function limparRankingFirestore() {
+  try {
+    await setDoc(doc(db, "ranking", "mesAtual"), { n1: {}, n2: {} });
+  } catch (error) {
+    console.error("Erro ao limpar ranking:", error);
+  }
 }
 
 // ===== TIMER =====
@@ -761,7 +787,7 @@ window.limparRanked = function() {
     return;
   }
   ranked={ n1:{}, n2:{} };
-  localStorage.setItem("rankedMes", JSON.stringify(ranked));
+  limparRankingFirestore();
   window.renderRanked();
 }
 window.listarRank = function(obj){

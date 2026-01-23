@@ -604,6 +604,7 @@ function render() {
       const statusTexto = p.status === "confirmado" ? "Confirmado" : "Em separação";
       const d = document.createElement("div");
       d.className = "card " + p.status;
+      d.id = `card-${c}`;
       d.innerHTML = `
         <button class="btn-lixeira" onclick="apagarPedido('${c}')">🗑</button>
         Pedido: ${c}
@@ -614,6 +615,7 @@ function render() {
           <div class="info-operador">1º Andar — Iniciou: ${p.andar2.inicio}</div>
           ${p.andar2.finalizou ? `<div class="info-operador">1º Andar — Finalizou: ${p.andar2.finalizou}</div>` : ""}
         ` : ""}
+        ${p.status === "confirmado" && p.tempoExpiracao ? `<div class="timer" id="timer-${c}"></div>` : ""}
       `;
       cards.appendChild(d);
     });
@@ -632,6 +634,26 @@ setInterval(() => {
     }
   });
 }, 30000); // Verificar a cada 30 segundos
+
+// ===== ATUALIZAR TIMER DOS CARDS =====
+setInterval(() => {
+  const agora = Date.now();
+  Object.entries(pedidos).forEach(([c, p]) => {
+    if (p.status === "confirmado" && p.tempoExpiracao) {
+      const tempoRestante = p.tempoExpiracao - agora;
+      
+      if (tempoRestante > 0) {
+        const minutos = Math.floor(tempoRestante / 60000);
+        const segundos = Math.floor((tempoRestante % 60000) / 1000);
+        const timerEl = document.getElementById(`timer-${c}`);
+        
+        if (timerEl) {
+          timerEl.innerText = `Tempo restante: ${minutos}m ${segundos}s`;
+        }
+      }
+    }
+  });
+}, 1000); // Atualizar a cada segundo
 
 // ===== SALVAR RANKING =====
 async function salvarRanking() {

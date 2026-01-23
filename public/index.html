@@ -491,17 +491,16 @@ scanner2.addEventListener("keydown", async (e) => {
     }
 
     // Verificar e atualizar status/pontuação baseado no estado do andar2
-    if (!pedidos[c].andar2 || !pedidos[c].andar2.finalizou) {
+    if (!pedidos[c].andar2) {
       // 1º bip do andar2: marca como iniciado
       await setDoc(doc(db, "pedidosAtivos", c), {
         andar2: { 
           inicio: operador2,
-          finalizou: null,
-          jaPontuou: false
+          finalizou: null
         }
       }, { merge: true });
-    } else {
-      // 2º+ bip do andar2: marca como confirmado e pontuação
+    } else if (!pedidos[c].andar2.finalizou) {
+      // 2º bip do andar2: marca como confirmado e pontuação
       const inicioAndar = pedidos[c].andar2.inicio;
       ranked.n2[inicioAndar] = (ranked.n2[inicioAndar] || 0) + 1;
       if (inicioAndar !== operador2) {
@@ -512,8 +511,15 @@ scanner2.addEventListener("keydown", async (e) => {
       // Atualizar apenas finalizou mantendo inicio
       await setDoc(doc(db, "pedidosAtivos", c), {
         andar2: { 
-          finalizou: operador2,
-          jaPontuou: true
+          finalizou: operador2
+        }
+      }, { merge: true });
+    } else {
+      // 3º+ bip: volta para separacao (opcional, pode remover se não quiser)
+      await setDoc(doc(db, "pedidosAtivos", c), {
+        andar2: { 
+          inicio: operador2,
+          finalizou: null
         }
       }, { merge: true });
     }

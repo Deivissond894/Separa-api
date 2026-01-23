@@ -346,6 +346,7 @@ onSnapshot(query(collection(db, "relatorioPedidos"), orderBy("data", "desc")), (
 onSnapshot(doc(db, "ranking", "mesAtual"), (snapshot) => {
   if (snapshot.exists()) {
     ranked = snapshot.data();
+    window.ranked = ranked;
   } else {
     // Se não existir, cria documento vazio
     setDoc(doc(db, "ranking", "mesAtual"), { n1: {}, n2: {} }).catch(err => console.error("Erro ao criar documento:", err));
@@ -359,6 +360,7 @@ onSnapshot(collection(db, "historicoRanking"), (snapshot) => {
   snapshot.forEach(doc => {
     historicoRanked.push(doc.data());
   });
+  window.historicoRanked = historicoRanked;
 });
 
 // PESQUISAS
@@ -604,6 +606,10 @@ async function salvarRanking() {
   }
 }
 
+// Exposição global de variáveis
+window.ranked = ranked;
+window.historicoRanked = historicoRanked;
+
 // ===== LIMPAR RANKING =====
 async function limparRankingFirestore() {
   try {
@@ -781,7 +787,7 @@ window.toggleTV = function() {
 }
 window.abrirRanked = function() {
   if(prompt("Senha:")!=="1617") return;
-  console.log("Dados de ranking:", { ranked, historicoRanked });
+  console.log("Dados de ranking:", { ranked: window.ranked, historicoRanked: window.historicoRanked });
   document.getElementById("modalRanked").style.display="flex";
   window.renderRanked();
 }
@@ -807,8 +813,8 @@ window.renderRanked = function(){
   const box=document.getElementById("rankedAtual");
   const hist=document.getElementById("rankedHistorico");
 
-  const n1 = ranked.n1 || {};
-  const n2 = ranked.n2 || {};
+  const n1 = (window.ranked && window.ranked.n1) || {};
+  const n2 = (window.ranked && window.ranked.n2) || {};
 
   box.innerHTML=`
     <h3>Mês Atual — Térreo</h3>
@@ -819,8 +825,8 @@ window.renderRanked = function(){
 
   hist.innerHTML="<h3>Histórico Mensal</h3>";
 
-  if (historicoRanked && historicoRanked.length > 0) {
-    historicoRanked.forEach(reg=>{
+  if (window.historicoRanked && window.historicoRanked.length > 0) {
+    window.historicoRanked.forEach(reg=>{
       const rankingN1 = (reg.ranking && reg.ranking.n1) || {};
       const rankingN2 = (reg.ranking && reg.ranking.n2) || {};
       

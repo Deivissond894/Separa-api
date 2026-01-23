@@ -374,6 +374,12 @@ onSnapshot(collection(db, "historicoRanking"), (snapshot) => {
 campoPesquisa.addEventListener("input", render);
 campoPesquisaHistorico.addEventListener("input", renderHistorico);
 
+// ===== FOCO AUTOMÁTICO =====
+// Focar no campo de usuário ao carregar a página
+window.addEventListener("load", () => {
+  usuario.focus();
+});
+
 // ===== TÉRREO =====
 usuario.addEventListener("input", () => {
   const nome = usuarios[usuario.value];
@@ -455,12 +461,14 @@ scanner.addEventListener("keydown", async (e) => {
     operadorAtual = null;
     opBoxN1.style.display = "none";
     scanner.disabled = true;
+    usuario.focus(); // Retorna foco para o campo de usuário
   }
 });
 
 // ===== PRIMEIRO ANDAR =====
 function abrirAndar() {
   document.getElementById("modalAndar").style.display = "flex";
+  usuario2.focus(); // Focar no campo de usuário quando abre a modal
 }
 function fecharAndar() {
   document.getElementById("modalAndar").style.display = "none";
@@ -543,6 +551,7 @@ scanner2.addEventListener("keydown", async (e) => {
     operador2 = null;
     opBoxN2.style.display = "none";
     scanner2.disabled = true;
+    usuario2.focus(); // Retorna foco para o campo de usuário do 1º andar
   }
 });
 

@@ -433,6 +433,8 @@ scanner.addEventListener("keydown", async (e) => {
           const data = await response.json();
           const tempoExpiracao = data.tempoExpiracao;
           
+          console.log(`Pedido ${c} confirmado. Expira em: ${new Date(tempoExpiracao)}`);
+          
           const updateData = {
             status: "confirmado",
             finalizou: operadorAtual,
@@ -645,11 +647,14 @@ function render() {
   }
 
   const lista = pedidosFiltrados.filter(([c, p]) => {
-    // Remover pedidos confirmados que expiraram
-    if (p.status === "confirmado" && p.tempoExpiracao && agora > p.tempoExpiracao) {
-      // Deletar do Firestore se expirou
-      deleteDoc(doc(db, "pedidosAtivos", c)).catch(err => console.error("Erro ao deletar pedido expirado:", err));
-      return false;
+    // Remover pedidos confirmados que expiraram (verificar se realmente expirou)
+    if (p.status === "confirmado" && p.tempoExpiracao) {
+      const tempoRestante = p.tempoExpiracao - agora;
+      // Apenas deletar se passou de 0 e já expirou há mais de 1 segundo
+      if (tempoRestante < -1000) {
+        deleteDoc(doc(db, "pedidosAtivos", c)).catch(err => console.error("Erro ao deletar pedido expirado:", err));
+        return false;
+      }
     }
     
     return true;

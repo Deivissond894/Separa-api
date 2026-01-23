@@ -433,13 +433,19 @@ scanner.addEventListener("keydown", async (e) => {
           const data = await response.json();
           const tempoExpiracao = data.tempoExpiracao;
           
-          await setDoc(doc(db, "pedidosAtivos", c), {
+          const updateData = {
             status: "confirmado",
-            iniciou: iniciouAtual,
             finalizou: operadorAtual,
             separadores: [...separadoresAtuais, operadorAtual],
             tempoExpiracao: tempoExpiracao
-          }, { merge: true });
+          };
+          
+          // Apenas adicionar iniciou se existir
+          if (iniciouAtual && iniciouAtual !== "undefined" && iniciouAtual !== "null") {
+            updateData.iniciou = iniciouAtual;
+          }
+          
+          await setDoc(doc(db, "pedidosAtivos", c), updateData, { merge: true });
         } catch (err) {
           console.error("Erro ao confirmar pedido:", err);
           return;

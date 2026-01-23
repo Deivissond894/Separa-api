@@ -74,6 +74,7 @@ button{border:none;cursor:pointer}
 }
 .separacao{background:#FFD200}
 .confirmado{background:#008000;color:#fff}
+.histórico{background:#A9A9A9;color:#fff}
 
 .timer{margin-top:6px;font-weight:bold}
 .info-operador{font-size:13px}
@@ -578,10 +579,36 @@ function render() {
   if (modoTV) window.scrollTo({ top: 0, behavior: "auto" });
 
   const agora = Date.now();
-  const lista = Object.entries(pedidos).filter(([c, p]) => {
-    // Filtrar por pesquisa
-    if (filtro && !c.includes(filtro)) return false;
+  
+  // Se houver filtro, buscar também no histórico de hoje
+  let pedidosFiltrados = Object.entries(pedidos);
+  
+  if (filtro) {
+    // Filtrar pedidos ativos
+    pedidosFiltrados = pedidosFiltrados.filter(([c]) => c.includes(filtro));
     
+    // Adicionar pedidos do histórico de hoje que correspondem ao filtro
+    const hoje = new Date(agora).toDateString();
+    relatorio.forEach(item => {
+      const dataItem = new Date(item.data).toDateString();
+      if (dataItem === hoje && item.pedido && item.pedido.includes(filtro)) {
+        // Verificar se já existe nos pedidos ativos
+        if (!pedidosFiltrados.find(([c]) => c === item.pedido)) {
+          // Adicionar como "histórico" (não está mais ativo)
+          pedidosFiltrados.push([item.pedido, { 
+            status: "histórico",
+            tipo: item.tipo,
+            operador: item.operador
+          }]);
+        }
+      }
+    });
+  } else {
+    // Sem filtro, mostrar apenas pedidos ativos
+    pedidosFiltrados = pedidosFiltrados.filter(([c, p]) => p.status !== "histórico");
+  }
+
+  const lista = pedidosFiltrados.filter(([c, p]) => {
     // Remover pedidos confirmados que expiraram
     if (p.status === "confirmado" && p.tempoExpiracao && agora > p.tempoExpiracao) {
       // Deletar do Firestore se expirou
@@ -605,13 +632,15 @@ function render() {
     colConfirmado.innerHTML = `<div class="tv-title">Pedidos Confirmados</div>`;
 
     lista.forEach(([c, p]) => {
-      const statusTexto = p.status === "confirmado" ? "Confirmado" : "Em separação";
+      const statusTexto = p.status === "confirmado" ? "Confirmado" : p.status === "histórico" ? "Histórico" : "Em separação";
       const d = document.createElement("div");
       d.className = "card " + p.status;
       d.id = `card-${c}`;
       d.innerHTML = `
         Pedido: ${c}
         <div class="status-text">Status: ${statusTexto}</div>
+        ${p.status === "histórico" ? `<div class="info-operador">Tipo: ${p.tipo === "n1" ? "Térreo" : "1º Andar"}</div>` : ""}
+        ${p.status === "histórico" ? `<div class="info-operador">Operador: ${p.operador}</div>` : ""}
         ${p.iniciou ? `<div class="info-operador">Térreo — Iniciou: ${p.iniciou}</div>` : ""}
         ${p.finalizou ? `<div class="info-operador">Térreo — Finalizou: ${p.finalizou}</div>` : ""}
         ${p.andar2 ? `
@@ -632,7 +661,7 @@ function render() {
     cards.appendChild(grid);
   } else {
     lista.forEach(([c, p]) => {
-      const statusTexto = p.status === "confirmado" ? "Confirmado" : "Em separação";
+      const statusTexto = p.status === "confirmado" ? "Confirmado" : p.status === "histórico" ? "Histórico" : "Em separação";
       const d = document.createElement("div");
       d.className = "card " + p.status;
       d.id = `card-${c}`;
@@ -640,6 +669,8 @@ function render() {
         <button class="btn-lixeira" onclick="apagarPedido('${c}')">🗑</button>
         Pedido: ${c}
         <div class="status-text">Status: ${statusTexto}</div>
+        ${p.status === "histórico" ? `<div class="info-operador">Tipo: ${p.tipo === "n1" ? "Térreo" : "1º Andar"}</div>` : ""}
+        ${p.status === "histórico" ? `<div class="info-operador">Operador: ${p.operador}</div>` : ""}
         ${p.iniciou ? `<div class="info-operador">Térreo — Iniciou: ${p.iniciou}</div>` : ""}
         ${p.finalizou ? `<div class="info-operador">Térreo — Finalizou: ${p.finalizou}</div>` : ""}
         ${p.andar2 ? `

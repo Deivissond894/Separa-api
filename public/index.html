@@ -415,10 +415,12 @@ scanner.addEventListener("keydown", async (e) => {
       
       if (statusAtual === "separacao") {
         // separacao → confirmado
+        const tempoExpiracao = agora + (10 * 60 * 1000); // 10 minutos
         await setDoc(doc(db, "pedidosAtivos", c), {
           status: "confirmado",
           finalizou: operadorAtual,
-          separadores: [...separadoresAtuais, operadorAtual]
+          separadores: [...separadoresAtuais, operadorAtual],
+          tempoExpiracao: tempoExpiracao
         }, { merge: true });
         
         // Adiciona pontuação
@@ -552,8 +554,19 @@ function render() {
 
   if (modoTV) window.scrollTo({ top: 0, behavior: "auto" });
 
-  const lista = Object.entries(pedidos).filter(([c]) => {
-    return !filtro || c.includes(filtro);
+  const agora = Date.now();
+  const lista = Object.entries(pedidos).filter(([c, p]) => {
+    // Filtrar por pesquisa
+    if (filtro && !c.includes(filtro)) return false;
+    
+    // Remover pedidos confirmados que expiraram
+    if (p.status === "confirmado" && p.tempoExpiracao && agora > p.tempoExpiracao) {
+      // Deletar do Firestore se expirou
+      deleteDoc(doc(db, "pedidosAtivos", c)).catch(err => console.error("Erro ao deletar pedido expirado:", err));
+      return false;
+    }
+    
+    return true;
   });
 
   if (modoTV) {
@@ -609,6 +622,16 @@ function render() {
 
 // Expor render globalmente
 window.render = render;
+
+// ===== LIMPEZA PERIÓDICA DE PEDIDOS EXPIRADOS =====
+setInterval(() => {
+  const agora = Date.now();
+  Object.entries(pedidos).forEach(([c, p]) => {
+    if (p.status === "confirmado" && p.tempoExpiracao && agora > p.tempoExpiracao) {
+      deleteDoc(doc(db, "pedidosAtivos", c)).catch(err => console.error("Erro ao deletar pedido expirado:", err));
+    }
+  });
+}, 30000); // Verificar a cada 30 segundos
 
 // ===== SALVAR RANKING =====
 async function salvarRanking() {

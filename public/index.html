@@ -431,14 +431,23 @@ scanner.addEventListener("keydown", async (e) => {
           });
           const data = await response.json();
           const tempoExpiracao = data.tempoExpiracao;
+          const agoraServidor = data.agora;
           
           console.log(`Pedido ${c} confirmado. Expira em: ${new Date(tempoExpiracao)}`);
+          
+          // Atualizar o objeto local ANTES de salvar no Firebase
+          // para garantir consistência de dados
+          if (!pedidos[c]) pedidos[c] = {};
+          pedidos[c].tempoExpiracao = tempoExpiracao;
+          pedidos[c].status = "confirmado";
+          pedidos[c].oculto = false;
           
           const updateData = {
             status: "confirmado",
             finalizou: operadorAtual,
             separadores: [...separadoresAtuais, operadorAtual],
-            tempoExpiracao: tempoExpiracao
+            tempoExpiracao: tempoExpiracao,
+            oculto: false  // Garantir que não está oculto
           };
           
           // Apenas adicionar iniciou se existir
@@ -448,8 +457,9 @@ scanner.addEventListener("keydown", async (e) => {
           
           await setDoc(doc(db, "pedidosAtivos", c), updateData, { merge: true });
           
-          // Agenda remoção do pedido após 10 minutos
-          agendarRemocaoPedido(c, tempoExpiracao);
+          // Agenda remoção do pedido após 10 minutos usando timestamp do servidor
+          // para evitar discrepâncias de fuso horário
+          agendarRemocaoPedido(c, tempoExpiracao, agoraServidor);
         } catch (err) {
           console.error("Erro ao confirmar pedido:", err);
           return;
@@ -649,6 +659,13 @@ function render() {
   }
 
   const lista = pedidosFiltrados.filter(([c, p]) => {
+    // Nunca filtrar pedidos confirmados enquanto tempoExpiracao não foi atingido
+    if (p.status === "confirmado" && p.tempoExpiracao) {
+      const agora = Date.now();
+      if (agora < p.tempoExpiracao) {
+        return true; // Mostrar sempre enquanto não expirou
+      }
+    }
     // Não mostrar pedidos marcados como ocultos
     return !p.oculto;
   });
@@ -683,10 +700,15 @@ function render() {
         ` : ""}
         ${p.status === "confirmado" && p.tempoExpiracao ? `<div class="timer" id="timer-${c}"></div>` : ""}
       `;
+      // Prioridade: confirmado vai sempre para colConfirmado
+      // separacao vai para colSep
+      // histórico vai para colConfirmado também (mas com estilo diferente)
       if (p.status === "separacao") {
         colSep.appendChild(d);
+      } else if (p.status === "confirmado") {
+        colConfirmado.appendChild(d); // Prioridade de exibição
       } else {
-        colConfirmado.appendChild(d);
+        colConfirmado.appendChild(d); // histórico na coluna confirmado
       }
     });
 
@@ -725,14 +747,24 @@ window.render = render;
 // Mapear para rastrear timeouts ativos
 const pedidoTimeouts = {};
 
-function agendarRemocaoPedido(codigo, tempoExpiracao) {
+function agendarRemocaoPedido(codigo, tempoExpiracao, agoraServidor = null) {
   // Se já existe um timeout para este pedido, cancela
   if (pedidoTimeouts[codigo]) {
     clearTimeout(pedidoTimeouts[codigo]);
   }
   
-  const agora = Date.now();
-  const tempoAteExpiracao = tempoExpiracao - agora;
+  // Usar timestamp do servidor como referência para evitar discrepâncias de fuso horário
+  const agoraCliente = Date.now();
+  const agoraRef = agoraServidor !== null ? agoraServidor : agoraCliente;
+  
+  // Calcular o tempo até expiração usando o timestamp de referência
+  let tempoAteExpiracao = tempoExpiracao - agoraRef;
+  
+  // Se a diferença for muito grande, recalcular usando o cliente (sincronização falhou)
+  if (Math.abs(tempoAteExpiracao - (tempoExpiracao - agoraCliente)) > 5000) {
+    tempoAteExpiracao = tempoExpiracao - agoraCliente;
+    console.warn(`Offset de fuso horário detectado. Usando timestamp do cliente.`);
+  }
   
   if (tempoAteExpiracao <= 0) {
     // Já expirou, remove imediatamente
@@ -746,7 +778,7 @@ function agendarRemocaoPedido(codigo, tempoExpiracao) {
     delete pedidoTimeouts[codigo];
   }, tempoAteExpiracao);
   
-  console.log(`Pedido ${codigo} agendado para remoção em ${tempoAteExpiracao}ms`);
+  console.log(`Pedido ${codigo} agendado para remoção em ${tempoAteExpiracao}ms (${Math.floor(tempoAteExpiracao / 1000)}s)`);
 }
 
 function removerPedidoVencido(codigo) {

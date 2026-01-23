@@ -66,8 +66,10 @@ app.post('/api/pedidos/:codigo/confirmar', async (req, res) => {
     const agora = Date.now();
     const tempoExpiracao = agora + (10 * 60 * 1000); // 10 minutos do servidor
     
+    // Garante que oculto seja false ao confirmar (sincronização de status)
     await db.collection('pedidosAtivos').doc(codigo).update({
-      tempoExpiracao: tempoExpiracao
+      tempoExpiracao: tempoExpiracao,
+      oculto: false  // Garantir que não está oculto ao confirmar
     });
     
     res.json({ 

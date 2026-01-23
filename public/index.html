@@ -647,19 +647,8 @@ function render() {
   }
 
   const lista = pedidosFiltrados.filter(([c, p]) => {
-    // Remover pedidos confirmados que expiraram
-    if (p.status === "confirmado" && p.tempoExpiracao) {
-      const tempoRestante = p.tempoExpiracao - agora;
-      // NÃO remover da tela enquanto não expirar realmente
-      // Apenas deletar do Firestore após expiração
-      if (tempoRestante < 0) {
-        // Passou da hora de expiração, ainda mostrar na tela
-        // O delete acontecerá no intervalo de limpeza
-        console.log(`Pedido ${c} expirado. Tempo restante: ${tempoRestante}ms`);
-      }
-    }
-    
-    return true; // Sempre mostrar na tela enquanto estiver em pedidos
+    // Sem filtro de expiração - pedidos ficam na tela até serem deletados manualmente
+    return true;
   });
 
   if (modoTV) {
@@ -729,22 +718,6 @@ function render() {
 
 // Expor render globalmente
 window.render = render;
-
-// ===== LIMPEZA PERIÓDICA DE PEDIDOS EXPIRADOS =====
-// Apenas deletar do Firestore quando realmente expirou (após 10 minutos + margem de erro)
-setInterval(() => {
-  const agora = Date.now();
-  Object.entries(pedidos).forEach(([c, p]) => {
-    if (p.status === "confirmado" && p.tempoExpiracao) {
-      const tempoRestante = p.tempoExpiracao - agora;
-      // Só deletar após 1 segundo de expiração
-      if (tempoRestante < -1000) {
-        console.log(`Deletando pedido ${c} que expirou em ${new Date(p.tempoExpiracao)}`);
-        deleteDoc(doc(db, "pedidosAtivos", c)).catch(err => console.error("Erro ao deletar pedido expirado:", err));
-      }
-    }
-  });
-}, 5000); // Verificar a cada 5 segundos (menos frequente para não interferir)
 
 // ===== ATUALIZAR TIMER DOS CARDS =====
 setInterval(() => {

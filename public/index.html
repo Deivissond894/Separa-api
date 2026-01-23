@@ -585,9 +585,17 @@ function render() {
       const statusTexto = p.status === "confirmado" ? "Confirmado" : "Em separação";
       const d = document.createElement("div");
       d.className = "card " + p.status;
+      d.id = `card-${c}`;
       d.innerHTML = `
         Pedido: ${c}
         <div class="status-text">Status: ${statusTexto}</div>
+        ${p.iniciou ? `<div class="info-operador">Térreo — Iniciou: ${p.iniciou}</div>` : ""}
+        ${p.finalizou ? `<div class="info-operador">Térreo — Finalizou: ${p.finalizou}</div>` : ""}
+        ${p.andar2 ? `
+          <div class="info-operador">1º Andar — Iniciou: ${p.andar2.inicio}</div>
+          ${p.andar2.finalizou ? `<div class="info-operador">1º Andar — Finalizou: ${p.andar2.finalizou}</div>` : ""}
+        ` : ""}
+        ${p.status === "confirmado" && p.tempoExpiracao ? `<div class="timer" id="timer-${c}"></div>` : ""}
       `;
       if (p.status === "separacao") {
         colSep.appendChild(d);

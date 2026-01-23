@@ -346,7 +346,12 @@ onSnapshot(query(collection(db, "relatorioPedidos"), orderBy("data", "desc")), (
 onSnapshot(doc(db, "ranking", "mesAtual"), (snapshot) => {
   if (snapshot.exists()) {
     ranked = snapshot.data();
+  } else {
+    // Se não existir, cria documento vazio
+    setDoc(doc(db, "ranking", "mesAtual"), { n1: {}, n2: {} }).catch(err => console.error("Erro ao criar documento:", err));
   }
+}, (error) => {
+  console.error("Erro no listener de ranking:", error);
 });
 
 onSnapshot(collection(db, "historicoRanking"), (snapshot) => {
@@ -575,8 +580,8 @@ function render() {
         <button class="btn-lixeira" onclick="apagarPedido('${c}')">🗑</button>
         Pedido: ${c}
         <div class="status-text">Status: ${statusTexto}</div>
-        ${p.iniciou ? `<div class="info-operador">Iniciou: ${p.iniciou}</div>` : ""}
-        ${p.finalizou ? `<div class="info-operador">Finalizou: ${p.finalizou}</div>` : ""}
+        ${p.iniciou ? `<div class="info-operador">Térreo — Iniciou: ${p.iniciou}</div>` : ""}
+        ${p.finalizou ? `<div class="info-operador">Térreo — Finalizou: ${p.finalizou}</div>` : ""}
         ${p.andar2 ? `
           <div class="info-operador">1º Andar — Iniciou: ${p.andar2.inicio}</div>
           ${p.andar2.finalizou ? `<div class="info-operador">1º Andar — Finalizou: ${p.andar2.finalizou}</div>` : ""}
@@ -776,6 +781,7 @@ window.toggleTV = function() {
 }
 window.abrirRanked = function() {
   if(prompt("Senha:")!=="1617") return;
+  console.log("Dados de ranking:", { ranked, historicoRanked });
   document.getElementById("modalRanked").style.display="flex";
   window.renderRanked();
 }
@@ -801,24 +807,34 @@ window.renderRanked = function(){
   const box=document.getElementById("rankedAtual");
   const hist=document.getElementById("rankedHistorico");
 
+  const n1 = ranked.n1 || {};
+  const n2 = ranked.n2 || {};
+
   box.innerHTML=`
     <h3>Mês Atual — Térreo</h3>
-    ${window.listarRank(ranked.n1)}
+    ${window.listarRank(n1)}
     <h3>Mês Atual — 1º Andar</h3>
-    ${window.listarRank(ranked.n2)}
+    ${window.listarRank(n2)}
   `;
 
   hist.innerHTML="<h3>Histórico Mensal</h3>";
 
-  historicoRanked.forEach(reg=>{
-    hist.innerHTML+=`
-      <div class="ranked-box">
-        <strong>${reg.mes}</strong><br><br>
-        <u>Térreo</u><br>${window.listarRank(reg.ranking.n1)}
-        <u>1º Andar</u><br>${window.listarRank(reg.ranking.n2)}
-      </div>
-    `;
-  });
+  if (historicoRanked && historicoRanked.length > 0) {
+    historicoRanked.forEach(reg=>{
+      const rankingN1 = (reg.ranking && reg.ranking.n1) || {};
+      const rankingN2 = (reg.ranking && reg.ranking.n2) || {};
+      
+      hist.innerHTML+=`
+        <div class="ranked-box">
+          <strong>${reg.mes}</strong><br><br>
+          <u>Térreo</u><br>${window.listarRank(rankingN1)}
+          <u>1º Andar</u><br>${window.listarRank(rankingN2)}
+        </div>
+      `;
+    });
+  } else {
+    hist.innerHTML += "<p>Sem histórico ainda</p>";
+  }
 }
 </script>
 

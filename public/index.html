@@ -649,8 +649,8 @@ function render() {
   }
 
   const lista = pedidosFiltrados.filter(([c, p]) => {
-    // Sem filtro de expiração - pedidos ficam na tela até serem deletados manualmente
-    return true;
+    // Não mostrar pedidos marcados como ocultos
+    return !p.oculto;
   });
 
   if (modoTV) {
@@ -750,13 +750,16 @@ function agendarRemocaoPedido(codigo, tempoExpiracao) {
 }
 
 function removerPedidoVencido(codigo) {
-  // Remove apenas da visualização (deleta do Firebase)
-  deleteDoc(doc(db, "pedidosAtivos", codigo))
+  // Marca como oculto em vez de deletar do Firebase
+  // Assim mantém no histórico e ranking mas sai da tela
+  setDoc(doc(db, "pedidosAtivos", codigo), {
+    oculto: true
+  }, { merge: true })
     .then(() => {
-      console.log(`Pedido ${codigo} removido da visualização (expirou)`);
+      console.log(`Pedido ${codigo} marcado como oculto (expirou)`);
       render();
     })
-    .catch(err => console.error(`Erro ao remover pedido ${codigo}:`, err));
+    .catch(err => console.error(`Erro ao ocultar pedido ${codigo}:`, err));
 }
 
 // ===== ATUALIZAR TIMER VISUALMENTE =====

@@ -304,7 +304,6 @@ const usuarios = {
   5: "Samuel Oliveira", 6: "Samuel Bispo", 7: "Fabio", 8: "Ruan"
 };
 
-const TEMPO_PEDIDO = 20 * 60 * 1000;
 const SENHA = "1617";
 
 let pedidos = {};
@@ -448,6 +447,9 @@ scanner.addEventListener("keydown", async (e) => {
           }
           
           await setDoc(doc(db, "pedidosAtivos", c), updateData, { merge: true });
+          
+          // Agenda remoção do pedido após 10 minutos
+          agendarRemocaoPedido(c, tempoExpiracao);
         } catch (err) {
           console.error("Erro ao confirmar pedido:", err);
           return;
@@ -719,8 +721,46 @@ function render() {
 // Expor render globalmente
 window.render = render;
 
-// ===== ATUALIZAR TIMER DOS CARDS =====
-setInterval(() => {
+// ===== AGENDAR REMOÇÃO DE PEDIDOS EXPIRADOS =====
+// Mapear para rastrear timeouts ativos
+const pedidoTimeouts = {};
+
+function agendarRemocaoPedido(codigo, tempoExpiracao) {
+  // Se já existe um timeout para este pedido, cancela
+  if (pedidoTimeouts[codigo]) {
+    clearTimeout(pedidoTimeouts[codigo]);
+  }
+  
+  const agora = Date.now();
+  const tempoAteExpiracao = tempoExpiracao - agora;
+  
+  if (tempoAteExpiracao <= 0) {
+    // Já expirou, remove imediatamente
+    removerPedidoVencido(codigo);
+    return;
+  }
+  
+  // Agenda remoção exatamente quando expira
+  pedidoTimeouts[codigo] = setTimeout(() => {
+    removerPedidoVencido(codigo);
+    delete pedidoTimeouts[codigo];
+  }, tempoAteExpiracao);
+  
+  console.log(`Pedido ${codigo} agendado para remoção em ${tempoAteExpiracao}ms`);
+}
+
+function removerPedidoVencido(codigo) {
+  // Remove apenas da visualização (deleta do Firebase)
+  deleteDoc(doc(db, "pedidosAtivos", codigo))
+    .then(() => {
+      console.log(`Pedido ${codigo} removido da visualização (expirou)`);
+      render();
+    })
+    .catch(err => console.error(`Erro ao remover pedido ${codigo}:`, err));
+}
+
+// ===== ATUALIZAR TIMER VISUALMENTE =====
+function atualizarTimerVisual() {
   const agora = Date.now();
   Object.entries(pedidos).forEach(([c, p]) => {
     if (p.status === "confirmado" && p.tempoExpiracao) {
@@ -737,7 +777,14 @@ setInterval(() => {
       }
     }
   });
-}, 1000); // Atualizar a cada segundo
+}
+
+// Atualizar timers visuais a cada 1 segundo
+setInterval(atualizarTimerVisual, 1000);
+
+// Expor função globalmente
+window.agendarRemocaoPedido = agendarRemocaoPedido;
+window.removerPedidoVencido = removerPedidoVencido;
 
 // ===== SALVAR RANKING =====
 async function salvarRanking() {

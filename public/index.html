@@ -418,12 +418,14 @@ scanner.addEventListener("keydown", async (e) => {
       // 2º bip: muda para "confirmado"
       const statusAtual = pedidos[c].status;
       const separadoresAtuais = pedidos[c].separadores || [];
+      const iniciouAtual = pedidos[c].iniciou;
       
       if (statusAtual === "separacao") {
         // separacao → confirmado
         const tempoExpiracao = agora + (10 * 60 * 1000); // 10 minutos
         await setDoc(doc(db, "pedidosAtivos", c), {
           status: "confirmado",
+          iniciou: iniciouAtual,
           finalizou: operadorAtual,
           separadores: [...separadoresAtuais, operadorAtual],
           tempoExpiracao: tempoExpiracao

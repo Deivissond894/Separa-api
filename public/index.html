@@ -244,6 +244,7 @@ body.modo-tv .status-text{font-size:2.3vw}
       Separador ativo (1º andar): <span id="nome-n2"></span>
     </div>
     <input id="scanner2" placeholder="Aguardando bipe..." disabled>
+    <div id="card-andar2-container" style="margin-top: 20px;"></div>
   </div>
 </div>
 
@@ -524,6 +525,16 @@ scanner2.addEventListener("keydown", async (e) => {
           finalizou: null
         }
       }, { merge: true });
+      
+      // Mostrar card em amarelo (separação)
+      const container = document.getElementById("card-andar2-container");
+      container.innerHTML = `
+        <div class="card separacao" id="card-andar2-${c}">
+          <strong>Pedido: ${c}</strong>
+          <div class="status-text">Separador: ${operador2}</div>
+          <div class="status-text">Status: Em separação</div>
+        </div>
+      `;
     } else if (!pedidos[c].andar2.finalizou) {
       // 2º bip do andar2: marca como confirmado e pontuação
       const inicioAndar = pedidos[c].andar2.inicio;
@@ -539,6 +550,21 @@ scanner2.addEventListener("keydown", async (e) => {
           finalizou: operador2
         }
       }, { merge: true });
+      
+      // Mostrar card em verde (confirmado) por 5 segundos
+      const container = document.getElementById("card-andar2-container");
+      container.innerHTML = `
+        <div class="card confirmado" id="card-andar2-${c}">
+          <strong>Pedido: ${c}</strong>
+          <div class="status-text">Separador: ${operador2}</div>
+          <div class="status-text">Status: Confirmado</div>
+        </div>
+      `;
+      
+      // Remover card após 5 segundos
+      setTimeout(() => {
+        container.innerHTML = "";
+      }, 5000);
     } else {
       // 3º+ bip: volta para separacao (opcional, pode remover se não quiser)
       await setDoc(doc(db, "pedidosAtivos", c), {

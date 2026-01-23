@@ -421,15 +421,27 @@ scanner.addEventListener("keydown", async (e) => {
       const iniciouAtual = pedidos[c].iniciou;
       
       if (statusAtual === "separacao") {
-        // separacao → confirmado
-        const tempoExpiracao = agora + (10 * 60 * 1000); // 10 minutos
-        await setDoc(doc(db, "pedidosAtivos", c), {
-          status: "confirmado",
-          iniciou: iniciouAtual,
-          finalizou: operadorAtual,
-          separadores: [...separadoresAtuais, operadorAtual],
-          tempoExpiracao: tempoExpiracao
-        }, { merge: true });
+        // separacao → confirmado - USAR SERVIDOR COMO FONTE DA VERDADE
+        try {
+          const response = await fetch(`${API_URL}/api/pedidos/${c}/confirmar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+          const data = await response.json();
+          const tempoExpiracao = data.tempoExpiracao;
+          
+          await setDoc(doc(db, "pedidosAtivos", c), {
+            status: "confirmado",
+            iniciou: iniciouAtual,
+            finalizou: operadorAtual,
+            separadores: [...separadoresAtuais, operadorAtual],
+            tempoExpiracao: tempoExpiracao
+          }, { merge: true });
+        } catch (err) {
+          console.error("Erro ao confirmar pedido:", err);
+          return;
+        }
         
         // Adiciona pontuação
         const iniciouOp = pedidos[c].iniciou;

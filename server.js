@@ -59,6 +59,27 @@ app.post('/api/pedidos/:codigo', async (req, res) => {
   }
 });
 
+// Endpoint para confirmar pedido e retornar tempoExpiracao
+app.post('/api/pedidos/:codigo/confirmar', async (req, res) => {
+  try {
+    const { codigo } = req.params;
+    const agora = Date.now();
+    const tempoExpiracao = agora + (10 * 60 * 1000); // 10 minutos do servidor
+    
+    await db.collection('pedidosAtivos').doc(codigo).update({
+      tempoExpiracao: tempoExpiracao
+    });
+    
+    res.json({ 
+      success: true, 
+      tempoExpiracao: tempoExpiracao,
+      agora: agora
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.delete('/api/pedidos/:codigo', async (req, res) => {
   try {
     const { codigo } = req.params;

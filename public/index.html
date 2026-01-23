@@ -445,10 +445,12 @@ scanner.addEventListener("keydown", async (e) => {
           return;
         }
         
-        // Adiciona pontuação
+        // Adiciona pontuação (apenas se operador válido)
         const iniciouOp = pedidos[c].iniciou;
-        ranked.n1[iniciouOp] = (ranked.n1[iniciouOp] || 0) + 1;
-        if (iniciouOp !== operadorAtual) {
+        if (iniciouOp && iniciouOp !== "undefined" && iniciouOp !== "null") {
+          ranked.n1[iniciouOp] = (ranked.n1[iniciouOp] || 0) + 1;
+        }
+        if (operadorAtual && operadorAtual !== "undefined" && operadorAtual !== "null" && iniciouOp !== operadorAtual) {
           ranked.n1[operadorAtual] = (ranked.n1[operadorAtual] || 0) + 1;
         }
         await salvarRanking();
@@ -538,8 +540,10 @@ scanner2.addEventListener("keydown", async (e) => {
     } else if (!pedidos[c].andar2.finalizou) {
       // 2º bip do andar2: marca como confirmado e pontuação
       const inicioAndar = pedidos[c].andar2.inicio;
-      ranked.n2[inicioAndar] = (ranked.n2[inicioAndar] || 0) + 1;
-      if (inicioAndar !== operador2) {
+      if (inicioAndar && inicioAndar !== "undefined" && inicioAndar !== "null") {
+        ranked.n2[inicioAndar] = (ranked.n2[inicioAndar] || 0) + 1;
+      }
+      if (operador2 && operador2 !== "undefined" && operador2 !== "null" && inicioAndar !== operador2) {
         ranked.n2[operador2] = (ranked.n2[operador2] || 0) + 1;
       }
       await salvarRanking();
@@ -951,8 +955,10 @@ window.limparRanked = function() {
 }
 window.listarRank = function(obj){
   let html="<div class='ranked-box'>";
-  const lista=Object.entries(obj).sort((a,b)=>b[1]-a[1]);
-  lista.forEach(([nome,pontos])=> html+=`${nome}: ${pontos}<br>`);
+  const lista=Object.entries(obj)
+    .filter(([nome]) => nome && nome !== "undefined" && nome !== "null") // Filtrar nomes vazios/undefined
+    .sort((a,b)=>b[1]-a[1]);
+  lista.forEach(([nome,pontos])=> html+=`${usuarios[nome] || nome}: ${pontos}<br>`);
   html+="</div>";
   return html;
 }

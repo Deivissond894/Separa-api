@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Separação de Pedidos</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f2f4f7}
+
+/* TOPO */
+.topo{background:#0B2E5F;text-align:center;padding:15px}
+.topo img{max-width:220px}
+
+/* CONTAINER NORMAL */
+.container{
+  max-width:600px;
+  margin:30px auto;
+  background:#fff;
+  padding:20px;
+  border-radius:8px;
+}
+
+input,button{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  font-size:15px;
+  border-radius:6px;
+}
+input{border:1px solid #ccc}
+button{border:none;cursor:pointer}
+
+.btn-relatorio{background:#1F4E8C;color:#fff}
+.btn-limpar{background:#C0392B;color:#fff}
+.btn-andar{background:#6C3483;color:#fff}
+.btn-limpar-hist{background:#C0392B;color:#fff;margin-top:10px}
+
+/* REFERÊNCIA OPERADORES */
+.operadores-ref{
+  margin-bottom:12px;
+  padding:12px;
+  background:#f0f2f5;
+  border-radius:6px;
+  font-size:14px;
+}
+.operadores-ref strong{
+  display:block;
+  margin-bottom:6px;
+  color:#0B2E5F;
+}
+.operadores-ref div{line-height:1.5}
+
+/* 🔎 PESQUISA FIXA NA LATERAL DIREITA */
+.pesquisa-wrap{
+  position:fixed;
+  top:140px;
+  right:20px;
+  width:260px;
+  z-index:1500;
+}
+
+/* CARDS */
+.cards{margin-top:20px}
+.card{
+  position:relative;
+  padding:14px;
+  border-radius:6px;
+  margin-top:12px;
+  font-size:14px;
+}
+.separacao{background:#FFD200}
+.separado{background:#d4edda}
+
+.timer{margin-top:6px;font-weight:bold}
+.info-operador{font-size:13px}
+.status-text{font-weight:bold;margin-top:6px}
+
+/* LIXEIRA */
+.btn-lixeira{
+  position:absolute;
+  top:6px;right:6px;
+  width:24px;height:24px;
+  background:#C0392B;
+  color:#fff;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+
+/* BOTÃO TV */
+.btn-tv{
+  position:fixed;
+  right:12px;
+  top:50%;
+  transform:translateY(-50%);
+  width:42px;height:42px;
+  border-radius:50%;
+  background:#1F4E8C;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  z-index:3000;
+}
+
+/* ===== MODO TV ===== */
+body.modo-tv{background:#0B2E5F}
+body.modo-tv .container > *:not(.cards),
+body.modo-tv .info-operador,
+body.modo-tv .btn-lixeira,
+body.modo-tv .operadores-ref,
+body.modo-tv .pesquisa-wrap{display:none}
+
+body.modo-tv .container{
+  max-width:100%;
+  background:transparent;
+  margin:0;
+  padding:20px;
+}
+
+/* GRID TV */
+.tv-grid{display:grid;grid-template-columns:1fr 1fr;gap:30px}
+.tv-col{min-height:80vh}
+.tv-title{
+  color:#fff;
+  font-size:3vw;
+  font-weight:bold;
+  margin-bottom:10px;
+  text-align:center;
+}
+body.modo-tv .card{
+  padding:4vh;
+  margin-top:3vh;
+  border-radius:16px;
+  font-size:3vw;
+}
+body.modo-tv .timer{font-size:2.5vw}
+body.modo-tv .status-text{font-size:2.3vw}
+
+/* MODAIS */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.5);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:2000;
+}
+.modal-content{
+  background:#fff;
+  width:90%;
+  max-width:500px;
+  max-height:80vh;
+  overflow-y:auto;
+  border-radius:8px;
+  padding:20px;
+}
+.modal-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.close{cursor:pointer;font-size:20px;font-weight:bold}
+
+.historico-card{
+  background:#e2e3e5;
+  padding:12px;
+  border-radius:6px;
+  margin-top:10px;
+}
+
+/* INDICADOR OPERADOR */
+.operador-ativo{
+  font-weight:bold;
+  color:#1F4E8C;
+  margin-top:6px;
+  display:none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="topo">
+  <img src="logo-topo.png">
+</div>
+
+<div class="container">
+
+  <div class="operadores-ref">
+    <strong>Referência de Operadores</strong>
+    <div>1 - Jhonny</div>
+    <div>2 - Jhonatas</div>
+    <div>3 - Marcos</div>
+    <div>4 - Renato</div>
+    <div>5 - Samuel Oliveira</div>
+    <div>6 - Samuel Bispo</div>
+    <div>7 - Fabio</div>
+    <div>8 - Ruan</div>
+  </div>
+
+  <input id="usuario" placeholder="Número do separador (Térreo)">
+
+  <div id="op-ativo-n1" class="operador-ativo">
+    Separador ativo: <span id="nome-n1"></span>
+  </div>
+
+  <input id="scanner" placeholder="Aguardando bipe..." disabled>
+
+  <button class="btn-relatorio" onclick="abrirHistorico()">Ver relatório</button>
+  <button class="btn-andar" onclick="abrirAndar()">Primeiro andar</button>
+  <button class="btn-limpar" onclick="limparPedidos()">Limpar pedidos ativos</button>
+
+  <div class="cards" id="cards"></div>
+</div>
+
+<div class="pesquisa-wrap">
+  <input id="pesquisa" placeholder="Pesquisar pedido ativo">
+</div>
+
+<div class="btn-tv" onclick="toggleTV()">📺</div>
+
+<!-- MODAL PRIMEIRO ANDAR -->
+<div class="modal" id="modalAndar">
+  <div class="modal-content">
+    <div class="modal-header">
+      <strong>Primeiro Andar</strong>
+      <span class="close" onclick="fecharAndar()">✖</span>
+    </div>
+    <input id="usuario2" placeholder="Número do separador (1º andar)">
+    <div id="op-ativo-n2" class="operador-ativo">
+      Separador ativo (1º andar): <span id="nome-n2"></span>
+    </div>
+    <input id="scanner2" placeholder="Aguardando bipe..." disabled>
+  </div>
+</div>
+
+<!-- MODAL HISTÓRICO -->
+<div class="modal" id="modalHistorico">
+  <div class="modal-content">
+    <div class="modal-header">
+      <strong>Relatório</strong>
+      <span class="close" onclick="fecharHistorico()">✖</span>
+    </div>
+    <input id="pesquisaHistorico" placeholder="Pesquisar no relatório">
+    <div id="listaHistorico"></div>
+    <button class="btn-limpar-hist" onclick="limparRelatorio()">Limpar relatório</button>
+  </div>
+</div>
+
+<script>
+const usuarios={
+1:"Jhonny",2:"Jhonatas",3:"Marcos",4:"Renato",
+5:"Samuel Oliveira",6:"Samuel Bispo",7:"Fabio",8:"Ruan"
+};
+
+const TEMPO_PEDIDO=20*60*1000;
+const SENHA="1617";
+
+let pedidos=JSON.parse(localStorage.getItem("pedidosAtivos")||"{}");
+let relatorio=JSON.parse(localStorage.getItem("relatorioPedidos")||"[]");
+
+let operadorAtual=null;
+let operador2=null;
+
+const usuario=document.getElementById("usuario");
+const scanner=document.getElementById("scanner");
+const usuario2=document.getElementById("usuario2");
+const scanner2=document.getElementById("scanner2");
+const cards=document.getElementById("cards");
+const campoPesquisa=document.getElementById("pesquisa");
+const campoPesquisaHistorico=document.getElementById("pesquisaHistorico");
+
+const opBoxN1=document.getElementById("op-ativo-n1");
+const nomeN1=document.getElementById("nome-n1");
+const opBoxN2=document.getElementById("op-ativo-n2");
+const nomeN2=document.getElementById("nome-n2");
+
+/* PESQUISAS */
+campoPesquisa.addEventListener("input",render);
+campoPesquisaHistorico.addEventListener("input",renderHistorico);
+
+/* ===== TÉRREO ===== */
+usuario.addEventListener("input",()=>{
+  const nome=usuarios[usuario.value];
+  if(nome){
+    operadorAtual=nome;
+    nomeN1.innerText=nome;
+    opBoxN1.style.display="block";
+    usuario.value="";
+    scanner.disabled=false;
+    scanner.focus();
+  }
+});
+
+scanner.addEventListener("keydown",e=>{
+  if(e.key==="Enter"){
+    const c=scanner.value.trim();
+    scanner.value="";
+    if(!c||!operadorAtual)return;
+
+    const agora=Date.now();
+    if(!pedidos[c]){
+      pedidos[c]={status:"separacao",iniciou:operadorAtual};
+    }else{
+      pedidos[c].status="separado";
+      pedidos[c].finalizou=operadorAtual;
+      pedidos[c].fim=agora+TEMPO_PEDIDO;
+    }
+
+    relatorio.push({pedido:c,tipo:"n1",operador:operadorAtual,data:agora});
+
+    operadorAtual=null;
+    opBoxN1.style.display="none";
+    scanner.disabled=true;
+    salvar();render();
+  }
+});
+
+/* ===== PRIMEIRO ANDAR ===== */
+function abrirAndar(){document.getElementById("modalAndar").style.display="flex"}
+function fecharAndar(){document.getElementById("modalAndar").style.display="none"}
+
+usuario2.addEventListener("input",()=>{
+  const nome=usuarios[usuario2.value];
+  if(nome){
+    operador2=nome;
+    nomeN2.innerText=nome;
+    opBoxN2.style.display="block";
+    usuario2.value="";
+    scanner2.disabled=false;
+    scanner2.focus();
+  }
+});
+
+scanner2.addEventListener("keydown",e=>{
+  if(e.key==="Enter"){
+    const c=scanner2.value.trim();
+    scanner2.value="";
+    if(!c||!operador2)return;
+
+    pedidos[c]=pedidos[c]||{status:"separacao"};
+    pedidos[c].andar2={operador:operador2};
+    relatorio.push({pedido:c,tipo:"n2",operador:operador2,data:Date.now()});
+
+    operador2=null;
+    opBoxN2.style.display="none";
+    scanner2.disabled=true;
+    salvar();render();
+  }
+});
+
+/* ===== RENDER ===== */
+function render(){
+  cards.innerHTML="";
+  const modoTV=document.body.classList.contains("modo-tv");
+  const filtro=campoPesquisa.value.trim();
+
+  if(modoTV) window.scrollTo({top:0,behavior:"auto"});
+
+  const lista=Object.entries(pedidos).filter(([c])=>{
+    return !filtro || c.includes(filtro);
+  });
+
+  if(modoTV){
+    const grid=document.createElement("div");
+    grid.className="tv-grid";
+
+    const colSep=document.createElement("div");
+    colSep.className="tv-col";
+    colSep.innerHTML=`<div class="tv-title">Pedidos em separação</div>`;
+
+    const colPronto=document.createElement("div");
+    colPronto.className="tv-col";
+    colPronto.innerHTML=`<div class="tv-title">Pedidos separados</div>`;
+
+    lista.forEach(([c,p])=>{
+      const statusTexto=p.status==="separacao"?"Em separação":"Separado";
+      const d=document.createElement("div");
+      d.className="card "+p.status;
+      d.innerHTML=`
+        Pedido: ${c}
+        <div class="status-text">Status: ${statusTexto}</div>
+        ${p.fim?`<div class="timer" id="t-${c}"></div>`:""}
+      `;
+      (p.status==="separacao"?colSep:colPronto).appendChild(d);
+    });
+
+    grid.appendChild(colSep);
+    grid.appendChild(colPronto);
+    cards.appendChild(grid);
+  }else{
+    lista.forEach(([c,p])=>{
+      const statusTexto=p.status==="separacao"?"Em separação":"Separado";
+      const d=document.createElement("div");
+      d.className="card "+p.status;
+      d.innerHTML=`
+        <button class="btn-lixeira" onclick="apagarPedido('${c}')">🗑</button>
+        Pedido: ${c}
+        <div class="status-text">Status: ${statusTexto}</div>
+        ${p.iniciou?`<div class="info-operador">Início: ${p.iniciou}</div>`:""}
+        ${p.andar2?`<div class="info-operador">1º Andar: ${p.andar2.operador}</div>`:""}
+        ${p.finalizou?`<div class="info-operador">Finalizou: ${p.finalizou}</div>`:""}
+        ${p.fim?`<div class="timer" id="t-${c}"></div>`:""}
+      `;
+      cards.appendChild(d);
+    });
+  }
+}
+
+/* ===== TIMER ===== */
+setInterval(()=>{
+  Object.keys(pedidos).forEach(c=>{
+    const p=pedidos[c];
+    if(p.fim){
+      const r=p.fim-Date.now();
+      if(r<=0){
+        delete pedidos[c];
+        salvar();render();
+      }else{
+        const el=document.getElementById("t-"+c);
+        if(el)el.innerText=`Tempo restante: ${Math.floor(r/60000)}m ${Math.floor((r%60000)/1000)}s`;
+      }
+    }
+  });
+},1000);
+
+/* ===== HISTÓRICO ===== */
+function abrirHistorico(){
+  if(prompt("Senha:")!==SENHA) return;
+  document.getElementById("modalHistorico").style.display="flex";
+  renderHistorico();
+}
+function fecharHistorico(){
+  document.getElementById("modalHistorico").style.display="none";
+}
+function limparRelatorio(){
+  if(prompt("Senha:")===SENHA){
+    relatorio=[];
+    salvar();
+    renderHistorico();
+  }
+}
+function renderHistorico(){
+  const l = document.getElementById("listaHistorico");
+  const filtro = campoPesquisaHistorico.value.trim().toLowerCase();
+  l.innerHTML = "";
+
+  const mapa = {};
+
+  // organiza os eventos por pedido
+  relatorio.forEach(r=>{
+    if(!mapa[r.pedido]) mapa[r.pedido] = {};
+
+    if(r.tipo === "n1"){
+      if(!mapa[r.pedido].inicio){
+        mapa[r.pedido].inicio = r;
+      }else{
+        mapa[r.pedido].final = r;
+      }
+    }
+
+    if(r.tipo === "n2"){
+      mapa[r.pedido].andar2 = r;
+    }
+  });
+
+  Object.keys(mapa)
+  .filter(p=>{
+    const item = mapa[p];
+    return item.inicio && item.final &&
+           (!filtro || p.toLowerCase().includes(filtro));
+  })
+  .forEach(pedido=>{
+      const d = document.createElement("div");
+      d.className = "historico-card";
+
+      const i = mapa[pedido].inicio;
+      const f = mapa[pedido].final;
+      const n2 = mapa[pedido].andar2;
+
+      d.innerHTML = `
+        Pedido: ${pedido}<br><br>
+
+        ${i ? `
+        Início: ${i.operador}<br>
+        ${new Date(i.data).toLocaleDateString()} 
+        ${new Date(i.data).toLocaleTimeString()}<br><br>
+        ` : ""}
+
+        ${f ? `
+        Finalizou: ${f.operador}<br>
+        ${new Date(f.data).toLocaleDateString()} 
+        ${new Date(f.data).toLocaleTimeString()}<br><br>
+        ` : ""}
+
+        ${n2 ? `
+        1º Andar: ${n2.operador}<br>
+        ${new Date(n2.data).toLocaleDateString()} 
+        ${new Date(n2.data).toLocaleTimeString()}
+        ` : "Sem participação do 1º andar"}
+      `;
+
+      l.appendChild(d);
+    });
+}
+
+/* ===== UTIL ===== */
+function apagarPedido(c){
+  if(confirm("Apagar pedido "+c+"?")){
+    delete pedidos[c];
+    salvar();render();
+  }
+}
+function limparPedidos(){
+  if(prompt("Senha:")===SENHA){
+    pedidos={};
+    salvar();render();
+  }
+}
+function toggleTV(){
+  document.body.classList.toggle("modo-tv");
+  render();
+}
+function salvar(){
+  localStorage.setItem("pedidosAtivos",JSON.stringify(pedidos));
+  localStorage.setItem("relatorioPedidos",JSON.stringify(relatorio));
+}
+
+render();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Separação de Pedidos</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="logo-flutuante.png">
+
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f2f4f7}
+
+/* TOPO */
+.topo{background:#0B2E5F;text-align:center;padding:15px}
+.topo img{max-width:220px}
+
+/* CONTAINER NORMAL */
+.container{
+  max-width:600px;
+  margin:30px auto;
+  background:#fff;
+  padding:20px;
+  border-radius:8px;
+}
+
+input,button{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  font-size:15px;
+  border-radius:6px;
+}
+input{border:1px solid #ccc}
+button{border:none;cursor:pointer}
+
+.btn-relatorio{background:#1F4E8C;color:#fff}
+.btn-limpar{background:#C0392B;color:#fff}
+.btn-andar{background:#6C3483;color:#fff}
+.btn-limpar-hist{background:#C0392B;color:#fff;margin-top:10px}
+.btn-ranked{background:#0B5F2E;color:#fff}
+
+/* REFERÊNCIA OPERADORES */
+.operadores-ref{
+  margin-bottom:12px;
+  padding:12px;
+  background:#f0f2f5;
+  border-radius:6px;
+  font-size:14px;
+}
+.operadores-ref strong{
+  display:block;
+  margin-bottom:6px;
+  color:#0B2E5F;
+}
+.operadores-ref div{line-height:1.5}
+
+/* 🔎 PESQUISA FIXA NA LATERAL DIREITA */
+.pesquisa-wrap{
+  position:fixed;
+  top:140px;
+  right:20px;
+  width:260px;
+  z-index:1500;
+}
+
+/* CARDS */
+.cards{margin-top:20px}
+.card{
+  position:relative;
+  padding:14px;
+  border-radius:6px;
+  margin-top:12px;
+  font-size:14px;
+}
+.separacao{background:#FFD200}
+.confirmado{background:#008000;color:#fff}
+.histórico{background:#A9A9A9;color:#fff}
+
+.timer{margin-top:6px;font-weight:bold}
+.info-operador{font-size:13px}
+.status-text{font-weight:bold;margin-top:6px}
+
+/* LIXEIRA */
+.btn-lixeira{
+  position:absolute;
+  top:6px;right:6px;
+  width:24px;height:24px;
+  background:#C0392B;
+  color:#fff;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+
+/* BOTÃO TV */
+.btn-tv{
+  position:fixed;
+  right:12px;
+  top:50%;
+  transform:translateY(-50%);
+  width:42px;height:42px;
+  border-radius:50%;
+  background:#1F4E8C;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  z-index:3000;
+}
+
+/* ===== MODO TV ===== */
+body.modo-tv{background:#0B2E5F}
+body.modo-tv .container > *:not(.cards),
+body.modo-tv .info-operador,
+body.modo-tv .btn-lixeira,
+body.modo-tv .operadores-ref,
+body.modo-tv .pesquisa-wrap{display:none}
+
+body.modo-tv .container{
+  max-width:100%;
+  background:transparent;
+  margin:0;
+  padding:15px;
+}
+
+/* GRID TV - 2 colunas fixas */
+.tv-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.tv-col{min-height:80vh}
+.tv-title{
+  color:#fff;
+  font-size:2.2vw;
+  font-weight:bold;
+  margin-bottom:8px;
+  text-align:center;
+}
+body.modo-tv .card{
+  padding:2vh 2.5vh;
+  margin-top:1.2vh;
+  border-radius:12px;
+  font-size:2.2vw;
+  line-height:1.3;
+}
+body.modo-tv .timer{font-size:1.8vw;margin-top:4px}
+body.modo-tv .status-text{font-size:2vw;margin-top:4px}
+
+/* MODAIS */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.5);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:2000;
+}
+.modal-content{
+  background:#fff;
+  width:90%;
+  max-width:500px;
+  max-height:80vh;
+  overflow-y:auto;
+  border-radius:8px;
+  padding:20px;
+}
+.modal-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.close{cursor:pointer;font-size:20px;font-weight:bold}
+
+.historico-card{
+  background:#e2e3e5;
+  padding:12px;
+  border-radius:6px;
+  margin-top:10px;
+}
+
+.ranked-box{background:#f2f2f2;padding:10px;border-radius:6px;margin-top:10px;font-size:15px}
+
+/* INDICADOR OPERADOR */
+.operador-ativo{
+  font-weight:bold;
+  color:#1F4E8C;
+  margin-top:6px;
+  display:none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="topo">
+  <img src="logo-topo.png">
+</div>
+
+<div class="container">
+
+  <div class="operadores-ref">
+    <strong>Referência de Operadores</strong>
+    <div>1 - Jhonny</div>
+    <div>2 - Jhonatas</div>
+    <div>3 - Marcos</div>
+    <div>4 - Renato</div>
+    <div>5 - Samuel Oliveira</div>
+    <div>6 - Samuel Bispo</div>
+    <div>7 - Fabio</div>
+    <div>8 - Ruan</div>
+  </div>
+
+  <input id="usuario" placeholder="Número do separador (Térreo)">
+
+  <div id="op-ativo-n1" class="operador-ativo">
+    Separador ativo: <span id="nome-n1"></span>
+  </div>
+
+  <input id="scanner" placeholder="Aguardando bipe..." disabled>
+
+  <button class="btn-relatorio" onclick="abrirHistorico()">Ver relatório</button>
+  <button class="btn-ranked" onclick="abrirRanked()">Ranking</button>
+  <button class="btn-andar" onclick="abrirAndar()">Primeiro andar</button>
+  <button class="btn-limpar" onclick="limparPedidos()">Limpar pedidos ativos</button>
+
+  <div class="cards" id="cards"></div>
+</div>
+
+<div class="pesquisa-wrap">
+  <input id="pesquisa" placeholder="Pesquisar pedido ativo">
+</div>
+
+<div class="btn-tv" onclick="toggleTV()">📺</div>
+
+<!-- MODAL PRIMEIRO ANDAR -->
+<div class="modal" id="modalAndar">
+  <div class="modal-content">
+    <div class="modal-header">
+      <strong>Primeiro Andar</strong>
+      <span class="close" onclick="fecharAndar()">✖</span>
+    </div>
+    <input id="usuario2" placeholder="Número do separador (1º andar)">
+    <div id="op-ativo-n2" class="operador-ativo">
+      Separador ativo (1º andar): <span id="nome-n2"></span>
+    </div>
+    <input id="scanner2" placeholder="Aguardando bipe..." disabled>
+    <div id="card-andar2-container" style="margin-top: 20px;"></div>
+  </div>
+</div>
+
+<!-- MODAL HISTÓRICO -->
+<div class="modal" id="modalHistorico">
+  <div class="modal-content">
+    <div class="modal-header">
+      <strong>Relatório</strong>
+      <span class="close" onclick="fecharHistorico()">✖</span>
+    </div>
+    <div style="margin-bottom: 15px;">
+      <label>Filtrar por Data:</label>
+      <input type="date" id="filtroData" style="width: 100%; margin-top: 5px;">
+    </div>
+    <div style="margin-bottom: 15px;">
+      <label>Filtrar por Pedido:</label>
+      <input id="filtroPedido" placeholder="Número do pedido" style="width: 100%; margin-top: 5px;">
+    </div>
+    <button class="btn-relatorio" onclick="aplicarFiltroRelatorio()" style="margin-bottom: 15px;">Pesquisar</button>
+    <div id="paginacaoControles" style="display: none; margin-bottom: 15px; text-align: center;">
+      <button onclick="paginaAnterior()" id="btnAnterior" disabled>← Anterior</button>
+      <span id="paginaAtual" style="margin: 0 15px;">Página 1</span>
+      <button onclick="proximaPagina()" id="btnProxima">Próxima →</button>
+    </div>
+    <div id="listaHistorico"></div>
+    <button class="btn-limpar-hist" onclick="limparRelatorio()">Limpar relatório</button>
+  </div>
+</div>
+
+<!-- MODAL AUTENTICAÇÃO EXCLUSÃO -->
+<div class="modal" id="modalAutenticacao" style="display: none;">
+  <div class="modal-content" style="background: white; max-width: 400px;">
+    <div class="modal-header">
+      <strong id="tituloAutenticacao">Autenticação</strong>
+      <span class="close" onclick="fecharAutenticacao()">✖</span>
+    </div>
+    <div id="conteudoAutenticacao"></div>
+  </div>
+</div>
+
+<!-- MODAL RANKING -->
+<div class="modal" id="modalRanked">
+  <div class="modal-content">
+    <div class="modal-header">
+      <strong>Ranking Mensal Automático</strong>
+      <span class="close" onclick="fecharRanked()">✖</span>
+    </div>
+    <div id="rankedAtual"></div>
+    <div id="rankedHistorico"></div>
+    <button class="btn-limpar-hist" onclick="limparRanked()">Zerar ranking</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, onSnapshot, doc, setDoc, deleteDoc, addDoc, query, orderBy, limit, startAfter, where, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+// Modo de segurança - desativa funcionalidades não críticas
+const FIRESTORE_SAFE_MODE = window.location.search.includes('safemode=true');
+
+if (FIRESTORE_SAFE_MODE) {
+  console.warn("⚠️ FIRESTORE SAFE MODE ATIVADO - Funcionalidades limitadas");
+}
+
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyAxl_UboOnSPX0uN5-5rXb0T9BWo506yc0",
+  authDomain: "separacao-51e82.firebaseapp.com",
+  projectId: "separacao-51e82",
+  storageBucket: "separacao-51e82.firebasestorage.app",
+  messagingSenderId: "43379104986",
+  appId: "1:43379104986:web:dc97b02ef8a61fe2e619e3"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Login anônimo
+signInAnonymously(auth).catch(err => console.error("Auth error:", err));
+
+// URL base da API
+const API_URL = window.location.origin;
+
+const usuarios = {
+  1: "Jhonny", 2: "Jhonatas", 3: "Marcos", 4: "Renato",
+  5: "Samuel Oliveira", 6: "Samuel Bispo", 7: "Fabio", 8: "Ruan"
+};
+
+const SENHA = "1617";
+
+// Cache com TTL de 120 segundos
+const cache = {
+  ranking: { data: null, timestamp: 0 },
+  historicoRanking: { data: null, timestamp: 0 }
+};
+const CACHE_TTL = 120000; // 120 segundos
+
+function isCacheValid(cacheKey) {
+  return cache[cacheKey].data && (Date.now() - cache[cacheKey].timestamp < CACHE_TTL);
+}
+
+function setCache(cacheKey, data) {
+  cache[cacheKey] = { data, timestamp: Date.now() };
+}
+
+// Offset entre relógio do servidor (horário de Brasília) e o do cliente
+let offsetServidorMs = 0;
+const agoraServidorMs = () => Date.now() + offsetServidorMs;
+
+let pedidos = {};
+let pedidosConfirmados = {};
+let relatorio = [];
+let ranked = { n1: {}, n2: {} };
+let historicoRanked = [];
+
+let operadorAtual = null;
+let operador2 = null;
+
+const usuario = document.getElementById("usuario");
+const scanner = document.getElementById("scanner");
+const usuario2 = document.getElementById("usuario2");
+const scanner2 = document.getElementById("scanner2");
+const cards = document.getElementById("cards");
+const campoPesquisa = document.getElementById("pesquisa");
+const campoPesquisaHistorico = document.getElementById("pesquisaHistorico");
+
+const opBoxN1 = document.getElementById("op-ativo-n1");
+const nomeN1 = document.getElementById("nome-n1");
+const opBoxN2 = document.getElementById("op-ativo-n2");
+const nomeN2 = document.getElementById("nome-n2");
+
+// ===== INICIALIZAR LISTENERS DO FIRESTORE =====
+onSnapshot(collection(db, "pedidosAtivos"), (snapshot) => {
+  pedidos = {};
+  snapshot.forEach(doc => {
+    pedidos[doc.id] = doc.data();
+  });
+
+  const changes = snapshot.docChanges().map(change => ({
+    type: change.type,
+    id: change.doc.id,
+    data: change.doc.data()
+  }));
+
+  console.log("[SNAP][PEDIDOS_ATIVOS]", { count: snapshot.size, changes, pedidos });
+  render();
+}, (error) => {
+  console.error("[SNAP][PEDIDOS_ATIVOS][ERROR]", error);
+});
+
+// ⚡ OTIMIZAÇÃO: Removido onSnapshot de pedidosConfirmados para economizar leituras
+// Os pedidos confirmados não precisam de sync real-time pois:
+// 1. Já estão em pedidosAtivos quando necessário
+// 2. O timer visual usa dados já carregados
+// 3. Isso economiza milhares de leituras de exclusão por dia
+console.log("[OTIMIZADO] Listener de pedidosConfirmados removido - economia de leituras ativa");
+
+// NÃO carregar relatório automaticamente - será carregado sob demanda
+// NÃO carregar ranking automaticamente - será carregado ao abrir modal
+
+// PESQUISAS
+campoPesquisa.addEventListener("input", render);
+
+// ===== SINCRONIZAR HORÁRIO COM O SERVIDOR (BRASÍLIA) =====
+async function sincronizarHorarioServidor() {
+  try {
+    const resp = await fetch(`${API_URL}/api/agora`);
+    const data = await resp.json();
+    if (data && data.agora) {
+      offsetServidorMs = data.agora - Date.now();
+      console.log(`Offset servidor (Brasília): ${offsetServidorMs}ms`);
+    }
+  } catch (err) {
+    console.warn('Não foi possível sincronizar horário do servidor', err);
+  }
+}
+
+// ===== FOCO AUTOMÁTICO =====
+// Focar no campo de usuário ao carregar a página
+window.addEventListener("load", () => {
+  sincronizarHorarioServidor();
+  usuario.focus();
+});
+
+// ===== TÉRREO =====
+usuario.addEventListener("input", () => {
+  const nome = usuarios[usuario.value];
+  if (nome) {
+    operadorAtual = nome;
+    nomeN1.innerText = nome;
+    opBoxN1.style.display = "block";
+    usuario.value = "";
+    scanner.disabled = false;
+    scanner.focus();
+  }
+});
+
+scanner.addEventListener("keydown", async (e) => {
+  if (e.key === "Enter") {
+    const c = scanner.value.trim();
+    scanner.value = "";
+    if (!c || !operadorAtual) return;
+
+    const agora = agoraServidorMs();
+    
+    if (!pedidos[c]) {
+      // 1º bip: começa em "separacao"
+      await setDoc(doc(db, "pedidosAtivos", c), {
+        status: "separacao",
+        iniciou: operadorAtual,
+        separadores: [operadorAtual],
+        ultimaAtualizacao: agora
+      });
+      await addDoc(collection(db, "relatorioPedidos"), {
+        pedido: c,
+        tipo: "n1",
+        operador: operadorAtual,
+        data: agora
+      });
+    } else {
+      // 2º bip: muda para "confirmado"
+      const statusAtual = pedidos[c].status;
+      const separadoresAtuais = pedidos[c].separadores || [];
+      const iniciouAtual = pedidos[c].iniciou;
+      
+      if (statusAtual === "separacao") {
+        // separacao → confirmado - USAR SERVIDOR COMO FONTE DA VERDADE
+        console.log("[CONFIRM][START]", { codigo: c, statusAtual, separadoresAtuais, iniciouAtual, operadorAtual });
+        try {
+          const response = await fetch(`${API_URL}/api/pedidos-confirmados/${c}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              iniciou: iniciouAtual,
+              finalizou: operadorAtual,
+              separadores: [...separadoresAtuais, operadorAtual],
+              andar2: pedidos[c]?.andar2 || null
+            })
+          });
+          const data = await response.json();
+          const tempoExpiracao = data.tempoExpiracao;
+          const agoraServidor = data.agora;
+          offsetServidorMs = agoraServidor - Date.now();
+          
+          console.log("[CONFIRM][SERVER_NEW]", { codigo: c, tempoExpiracao, agoraServidor, offsetServidorMs });
+          
+          // Atualizar o objeto local ANTES de salvar no Firebase
+          // para garantir consistência de dados
+          if (!pedidos[c]) pedidos[c] = {};
+          pedidos[c].tempoExpiracao = tempoExpiracao;
+          pedidos[c].status = "confirmado";
+          pedidos[c].oculto = false;
+          pedidos[c].ultimaAtualizacao = agoraServidor;
+          
+          const updateData = {
+            status: "confirmado",
+            finalizou: operadorAtual,
+            separadores: [...separadoresAtuais, operadorAtual],
+            tempoExpiracao: tempoExpiracao,
+            oculto: false,  // Garantir que não está oculto
+            ultimaAtualizacao: agoraServidor
+          };
+          
+          // Apenas adicionar iniciou se existir
+          if (iniciouAtual && iniciouAtual !== "undefined" && iniciouAtual !== "null") {
+            updateData.iniciou = iniciouAtual;
+          }
+          
+          console.log("[CONFIRM][SETDOC]", updateData);
+          await setDoc(doc(db, "pedidosAtivos", c), updateData, { merge: true });
+          console.log("[CONFIRM][DONE]", { codigo: c });
+
+          // Agenda deleção apenas na coleção pedidosConfirmados após expirar (15min server-driven)
+          agendarRemocaoConfirmado(c, tempoExpiracao, agoraServidor);
+          
+        } catch (err) {
+          console.error("[CONFIRM][ERROR]", { codigo: c, err });
+          return;
+        }
+        
+        // Adiciona pontuação (apenas se operador válido)
+        const iniciouOp = pedidos[c].iniciou;
+        if (iniciouOp && iniciouOp !== "undefined" && iniciouOp !== "null") {
+          ranked.n1[iniciouOp] = (ranked.n1[iniciouOp] || 0) + 1;
+        }
+        if (operadorAtual && operadorAtual !== "undefined" && operadorAtual !== "null" && iniciouOp !== operadorAtual) {
+          ranked.n1[operadorAtual] = (ranked.n1[operadorAtual] || 0) + 1;
+        }
+        await salvarRanking();
+      } else if (statusAtual === "confirmado") {
+        // confirmado → bipado novamente: volta para separação e adiciona à lista de atualizadores
+        const atualizadores = pedidos[c].atualizadores || [];
+        if (!atualizadores.includes(operadorAtual)) {
+          atualizadores.push(operadorAtual);
+        }
+        
+        await setDoc(doc(db, "pedidosAtivos", c), {
+          status: "separacao",
+          atualizadores: atualizadores,
+          ultimaAtualizacao: agoraServidorMs()
+        }, { merge: true });
+        
+        // Atualizar relatório com participação na atualização
+        const relatorioDocs = await getDocs(query(collection(db, "relatorioPedidos"), orderBy("data", "desc")));
+        let relatorioAtualizado = false;
+        
+        relatorioDocs.forEach(async (docSnap) => {
+          const data = docSnap.data();
+          if (data.pedido === c && !relatorioAtualizado) {
+            const participantes = data.participouAtualizacao || [];
+            if (!participantes.includes(operadorAtual)) {
+              participantes.push(operadorAtual);
+              await setDoc(doc(db, "relatorioPedidos", docSnap.id), {
+                participouAtualizacao: participantes
+              }, { merge: true });
+              relatorioAtualizado = true;
+            }
+          }
+        });
+      }
+      
+      if (statusAtual !== "confirmado") {
+        await addDoc(collection(db, "relatorioPedidos"), {
+          pedido: c,
+          tipo: "n1",
+          operador: operadorAtual,
+          data: agora
+        });
+      }
+    }
+
+    operadorAtual = null;
+    opBoxN1.style.display = "none";
+    scanner.disabled = true;
+    usuario.focus(); // Retorna foco para o campo de usuário
+  }
+});
+
+// ===== PRIMEIRO ANDAR =====
+function abrirAndar() {
+  document.getElementById("modalAndar").style.display = "flex";
+  usuario2.focus(); // Focar no campo de usuário quando abre a modal
+}
+function fecharAndar() {
+  document.getElementById("modalAndar").style.display = "none";
+}
+
+usuario2.addEventListener("input", () => {
+  const nome = usuarios[usuario2.value];
+  if (nome) {
+    operador2 = nome;
+    nomeN2.innerText = nome;
+    opBoxN2.style.display = "block";
+    usuario2.value = "";
+    scanner2.disabled = false;
+    scanner2.focus();
+  }
+});
+
+scanner2.addEventListener("keydown", async (e) => {
+  if (e.key === "Enter") {
+    const c = scanner2.value.trim();
+    scanner2.value = "";
+    if (!c || !operador2) return;
+
+    const agora = agoraServidorMs();
+
+    if (!pedidos[c]) {
+      await setDoc(doc(db, "pedidosAtivos", c), {
+        status: "separacao",
+        ultimaAtualizacao: agora
+      });
+      pedidos[c] = { status: "separacao" };
+    }
+
+    // Verificar e atualizar status/pontuação baseado no estado do andar2
+    if (!pedidos[c].andar2) {
+      // 1º bip do andar2: marca como iniciado
+      await setDoc(doc(db, "pedidosAtivos", c), {
+        andar2: { 
+          inicio: operador2,
+          finalizou: null
+        },
+        ultimaAtualizacao: agora
+      }, { merge: true });
+      
+      // Mostrar card em amarelo (separação)
+      const container = document.getElementById("card-andar2-container");
+      container.innerHTML = `
+        <div class="card separacao" id="card-andar2-${c}">
+          <strong>Pedido: ${c}</strong>
+          <div class="status-text">Separador: ${operador2}</div>
+          <div class="status-text">Status: Em separação</div>
+        </div>
+      `;
+    } else if (!pedidos[c].andar2.finalizou) {
+      // 2º bip do andar2: marca como confirmado e pontuação
+      const inicioAndar = pedidos[c].andar2.inicio;
+      if (inicioAndar && inicioAndar !== "undefined" && inicioAndar !== "null") {
+        ranked.n2[inicioAndar] = (ranked.n2[inicioAndar] || 0) + 1;
+      }
+      if (operador2 && operador2 !== "undefined" && operador2 !== "null" && inicioAndar !== operador2) {
+        ranked.n2[operador2] = (ranked.n2[operador2] || 0) + 1;
+      }
+      await salvarRanking();
+
+      // Atualizar apenas finalizou mantendo inicio
+      await setDoc(doc(db, "pedidosAtivos", c), {
+        andar2: { 
+          finalizou: operador2
+        },
+        ultimaAtualizacao: agora
+      }, { merge: true });
+      
+      // Mostrar card em verde (confirmado) por 5 segundos
+      const container = document.getElementById("card-andar2-container");
+      container.innerHTML = `
+        <div class="card confirmado" id="card-andar2-${c}">
+          <strong>Pedido: ${c}</strong>
+          <div class="status-text">Separador: ${operador2}</div>
+          <div class="status-text">Status: Confirmado</div>
+        </div>
+      `;
+      
+      // Remover card após 5 segundos
+      setTimeout(() => {
+        container.innerHTML = "";
+      }, 5000);
+    } else {
+      // 3º+ bip do andar2: adiciona operador à lista de atualizadores
+      const atualizadores = pedidos[c].atualizadoresAndar2 || [];
+      if (!atualizadores.includes(operador2)) {
+        atualizadores.push(operador2);
+      }
+      
+      await setDoc(doc(db, "pedidosAtivos", c), {
+        atualizadoresAndar2: atualizadores,
+        ultimaAtualizacao: agora
+      }, { merge: true });
+      
+      // Atualizar relatório com participação na atualização
+      const relatorioDocs = await getDocs(query(collection(db, "relatorioPedidos"), orderBy("data", "desc")));
+      let relatorioAtualizado = false;
+      
+      relatorioDocs.forEach(async (docSnap) => {
+        const data = docSnap.data();
+        if (data.pedido === c && data.tipo === "n2" && !relatorioAtualizado) {
+          const participantes = data.participouAtualizacao || [];
+          if (!participantes.includes(operador2)) {
+            participantes.push(operador2);
+            await setDoc(doc(db, "relatorioPedidos", docSnap.id), {
+              participouAtualizacao: participantes
+            }, { merge: true });
+            relatorioAtualizado = true;
+          }
+        }
+      });
+    }
+
+    // Se pedido estava confirmado, volta para separação
+    if (pedidos[c] && pedidos[c].status === "confirmado") {
+      await setDoc(doc(db, "pedidosAtivos", c), {
+        status: "separacao",
+        ultimaAtualizacao: agora
+      }, { merge: true });
+    }
+
+    await addDoc(collection(db, "relatorioPedidos"), {
+      pedido: c,
+      tipo: "n2",
+      operador: operador2,
+      data: agora
+    });
+
+    operador2 = null;
+    opBoxN2.style.display = "none";
+    scanner2.disabled = true;
+    usuario2.focus(); // Retorna foco para o campo de usuário do 1º andar
+  }
+});
+
+// ===== RENDER =====
+function render() {
+  cards.innerHTML = "";
+  const modoTV = document.body.classList.contains("modo-tv");
+  const filtro = campoPesquisa.value.trim();
+
+  if (modoTV) window.scrollTo({ top: 0, behavior: "auto" });
+
+  const agora = agoraServidorMs();
+  
+  // ⚡ OTIMIZADO: Usa apenas pedidosAtivos (pedidosConfirmados não precisa mais)
+  let pedidosFiltrados = Object.entries(pedidos);
+  
+  if (filtro) {
+    // Filtrar pedidos ativos
+    pedidosFiltrados = pedidosFiltrados.filter(([c]) => c.includes(filtro));
+    
+    // Adicionar pedidos do histórico de hoje que correspondem ao filtro
+    const hoje = new Date(agora).toDateString();
+    relatorio.forEach(item => {
+      const dataItem = new Date(item.data).toDateString();
+      if (dataItem === hoje && item.pedido && item.pedido.includes(filtro)) {
+        // Verificar se já existe nos pedidos ativos
+        if (!pedidosFiltrados.find(([c]) => c === item.pedido)) {
+          // Adicionar como "histórico" (não está mais ativo)
+          pedidosFiltrados.push([item.pedido, { 
+            status: "histórico",
+            tipo: item.tipo,
+            operador: item.operador,
+            ultimaAtualizacao: item.data
+          }]);
+        }
+      }
+    });
+  } else {
+    // Sem filtro, mostrar apenas pedidos ativos
+    pedidosFiltrados = pedidosFiltrados.filter(([c, p]) => p.status !== "histórico");
+  }
+
+  // Ordenar pelos mais recentes (última modificação)
+  const normalizarTempo = (valor) => {
+    if (!valor) return null;
+    if (typeof valor === "number") return valor;
+    if (typeof valor.toMillis === "function") return valor.toMillis();
+    return null;
+  };
+
+  const ultimaData = (pedido) => {
+    const candidatos = [
+      normalizarTempo(pedido?.ultimaAtualizacao),
+      normalizarTempo(pedido?.registradoEm),
+      normalizarTempo(pedido?.data),
+      normalizarTempo(pedido?.tempoExpiracao)
+    ].filter(v => typeof v === "number");
+    return candidatos.length ? Math.max(...candidatos) : 0;
+  };
+
+  pedidosFiltrados.sort(([, a], [, b]) => {
+    const timeA = a.ultimaAtualizacao || 0;
+    const timeB = b.ultimaAtualizacao || 0;
+    return timeB - timeA;
+  });
+
+  // Exibir todos os pedidos (confirmados não expiram mais automaticamente)
+  const lista = pedidosFiltrados;
+
+  if (modoTV) {
+    const grid = document.createElement("div");
+    grid.className = "tv-grid";
+
+    const colSep = document.createElement("div");
+    colSep.className = "tv-col";
+    colSep.innerHTML = `<div class="tv-title">Pedidos em Separação</div>`;
+
+    const colConfirmado = document.createElement("div");
+    colConfirmado.className = "tv-col";
+    colConfirmado.innerHTML = `<div class="tv-title">Pedidos Confirmados</div>`;
+
+    lista.forEach(([c, p]) => {
+      const statusTexto = p.status === "confirmado" ? "Confirmado" : p.status === "histórico" ? "Histórico" : "Em separação";
+      const d = document.createElement("div");
+      d.className = "card " + p.status;
+      d.id = `card-${c}`;
+      d.innerHTML = `
+        Pedido: ${c}
+        <div class="status-text">Status: ${statusTexto}</div>
+        ${p.status === "histórico" ? `<div class="info-operador">Tipo: ${p.tipo === "n1" ? "Térreo" : "1º Andar"}</div>` : ""}
+        ${p.status === "histórico" ? `<div class="info-operador">Operador: ${p.operador}</div>` : ""}
+        ${p.iniciou ? `<div class="info-operador">Térreo — Iniciou: ${p.iniciou}</div>` : ""}
+        ${p.finalizou ? `<div class="info-operador">Térreo — Finalizou: ${p.finalizou}</div>` : ""}
+        ${p.andar2 ? `
+          <div class="info-operador">1º Andar — Iniciou: ${p.andar2.inicio}</div>
+          ${p.andar2.finalizou ? `<div class="info-operador">1º Andar — Finalizou: ${p.andar2.finalizou}</div>` : ""}
+        ` : ""}
+  ${p.status === "confirmado" && p.tempoExpiracao ? `<div class="timer" id="timer-${c}"></div>` : ""}
+      `;
+      // Prioridade: confirmado vai sempre para colConfirmado
+      // separacao vai para colSep
+      // histórico vai para colConfirmado também (mas com estilo diferente)
+      if (p.status === "separacao") {
+        colSep.appendChild(d);
+      } else if (p.status === "confirmado") {
+        colConfirmado.appendChild(d); // Prioridade de exibição
+      } else {
+        colConfirmado.appendChild(d); // histórico na coluna confirmado
+      }
+    });
+
+    grid.appendChild(colSep);
+    grid.appendChild(colConfirmado);
+    cards.appendChild(grid);
+  } else {
+    lista.forEach(([c, p]) => {
+      const statusTexto = p.status === "confirmado" ? "Confirmado" : p.status === "histórico" ? "Histórico" : "Em separação";
+      const d = document.createElement("div");
+      d.className = "card " + p.status;
+      d.id = `card-${c}`;
+      d.innerHTML = `
+        <button class="btn-lixeira" onclick="apagarPedido('${c}')">🗑</button>
+        Pedido: ${c}
+        <div class="status-text">Status: ${statusTexto}</div>
+        ${p.status === "histórico" ? `<div class="info-operador">Tipo: ${p.tipo === "n1" ? "Térreo" : "1º Andar"}</div>` : ""}
+        ${p.status === "histórico" ? `<div class="info-operador">Operador: ${p.operador}</div>` : ""}
+        ${p.iniciou ? `<div class="info-operador">Térreo — Iniciou: ${p.iniciou}</div>` : ""}
+        ${p.finalizou ? `<div class="info-operador">Térreo — Finalizou: ${p.finalizou}</div>` : ""}
+        ${p.andar2 ? `
+          <div class="info-operador">1º Andar — Iniciou: ${p.andar2.inicio}</div>
+          ${p.andar2.finalizou ? `<div class="info-operador">1º Andar — Finalizou: ${p.andar2.finalizou}</div>` : ""}
+        ` : ""}
+  ${p.status === "confirmado" && p.tempoExpiracao ? `<div class="timer" id="timer-${c}"></div>` : ""}
+      `;
+      cards.appendChild(d);
+    });
+  }
+}
+
+// Expor render globalmente
+window.render = render;
+
+// ===== AGENDAR REMOÇÃO APENAS NA COLEÇÃO pedidosConfirmados =====
+const confirmadosTimeouts = {};
+function agendarRemocaoConfirmado(codigo, tempoExpiracao, agoraServidor = null) {
+  if (confirmadosTimeouts[codigo]) {
+    clearTimeout(confirmadosTimeouts[codigo]);
+  }
+  const referencia = agoraServidor !== null ? agoraServidor : agoraServidorMs();
+  const tempoAteExpirar = tempoExpiracao - referencia;
+  if (tempoAteExpirar <= 0) {
+    removerConfirmado(codigo);
+    return;
+  }
+  confirmadosTimeouts[codigo] = setTimeout(() => {
+    removerConfirmado(codigo);
+    delete confirmadosTimeouts[codigo];
+  }, tempoAteExpirar);
+  console.log(`[CONFIRM][SCHEDULE_DELETE] codigo=${codigo} em ${tempoAteExpirar}ms`);
+}
+
+async function removerConfirmado(codigo) {
+  try {
+    // Deletar de pedidosConfirmados
+    await fetch(`${API_URL}/api/pedidos-confirmados/${codigo}`, { method: 'DELETE' });
+    // Deletar também de pedidosAtivos para sumir completamente
+    await fetch(`${API_URL}/api/pedidos/${codigo}`, { method: 'DELETE' });
+    console.log('[CONFIRM][DELETE_EXPIRADO]', { codigo });
+  } catch (err) {
+    console.error('[CONFIRM][DELETE_EXPIRADO][ERROR]', { codigo, err });
+  }
+}
+
+// ===== ATUALIZAR TIMER VISUALMENTE =====
+function atualizarTimerVisual() {
+  const agora = agoraServidorMs();
+  // ⚡ OTIMIZADO: Usa apenas pedidosAtivos (sem precisar de pedidosConfirmados)
+  Object.entries(pedidos).forEach(([c, p]) => {
+    if (p && p.tempoExpiracao) {
+      const tempoRestante = p.tempoExpiracao - agora;
+      const timerEl = document.getElementById(`timer-${c}`);
+      if (timerEl) {
+        if (tempoRestante > 0) {
+          const minutos = Math.floor(tempoRestante / 60000);
+          const segundos = Math.floor((tempoRestante % 60000) / 1000);
+          timerEl.innerText = `Tempo restante: ${minutos}m ${segundos}s`;
+        } else {
+          // ⚡ Remover instantaneamente quando expirar (não mostrar "Expirado")
+          removerConfirmado(c);
+          // Remover do objeto local para sumir da tela imediatamente
+          delete pedidos[c];
+          render();
+        }
+      }
+    }
+  });
+}
+
+// Atualizar timers visuais a cada 1 segundo para contagem regressiva precisa
+setInterval(atualizarTimerVisual, 1000);
+
+// ===== SALVAR RANKING =====
+async function salvarRanking() {
+  try {
+    window.ranked = ranked;
+    await setDoc(doc(db, "ranking", "mesAtual"), ranked, { merge: true });
+  } catch (error) {
+    console.error("Erro ao salvar ranking:", error);
+  }
+}
+
+// Exposição global de variáveis
+window.ranked = ranked;
+window.historicoRanked = historicoRanked;
+
+// ===== LIMPAR RANKING =====
+async function limparRankingFirestore() {
+  try {
+    await setDoc(doc(db, "ranking", "mesAtual"), { n1: {}, n2: {} });
+  } catch (error) {
+    console.error("Erro ao limpar ranking:", error);
+  }
+}
+
+// ===== TIMER =====
+setInterval(() => {
+  // Timer removido - sem mais contador de 20min
+}, 60000);
+
+// ===== HISTÓRICO =====
+function abrirHistorico() {
+  if (FIRESTORE_SAFE_MODE) {
+    alert("⚠️ Relatório desativado no modo de segurança");
+    return;
+  }
+  if (prompt("Senha:") !== SENHA) return;
+  document.getElementById("modalHistorico").style.display = "flex";
+  document.getElementById("listaHistorico").innerHTML = "<p>Use os filtros acima para pesquisar.</p>";
+}
+function fecharHistorico() {
+  document.getElementById("modalHistorico").style.display = "none";
+}
+
+async function aplicarFiltroRelatorio() {
+  if (FIRESTORE_SAFE_MODE) {
+    alert("⚠️ Relatório desativado no modo de segurança");
+    return;
+  }
+  const filtroData = document.getElementById("filtroData").value;
+  const filtroPedido = document.getElementById("filtroPedido").value.trim();
+  
+  if (!filtroData && !filtroPedido) {
+    alert("Por favor, selecione pelo menos um filtro (Data ou Pedido).");
+    return;
+  }
+  
+  // Resetar paginação
+  window.paginaAtualRelatorio = 1;
+  window.ultimoDocRelatorio = null;
+  window.filtroAtualRelatorio = { filtroData, filtroPedido };
+  
+  await carregarPaginaRelatorio();
+}
+
+async function carregarPaginaRelatorio() {
+  const l = document.getElementById("listaHistorico");
+  l.innerHTML = "<p>Carregando...</p>";
+  
+  const { filtroData, filtroPedido } = window.filtroAtualRelatorio;
+  const LIMITE = 10;
+  
+  try {
+    let dados = [];
+    let q;
+    
+    if (filtroPedido) {
+      // Buscar por pedido específico
+      q = query(
+        collection(db, "relatorioPedidos"),
+        orderBy("data", "desc"),
+        limit(LIMITE)
+      );
+      
+      if (window.ultimoDocRelatorio) {
+        q = query(
+          collection(db, "relatorioPedidos"),
+          orderBy("data", "desc"),
+          startAfter(window.ultimoDocRelatorio),
+          limit(LIMITE)
+        );
+      }
+      
+      const snapshot = await getDocs(q);
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.pedido === filtroPedido) {
+          dados.push(data);
+        }
+      });
+      
+      if (snapshot.docs.length > 0) {
+        window.ultimoDocRelatorio = snapshot.docs[snapshot.docs.length - 1];
+      }
+      
+      // Controles de paginação
+      document.getElementById("paginacaoControles").style.display = "block";
+      document.getElementById("btnAnterior").disabled = window.paginaAtualRelatorio === 1;
+      document.getElementById("btnProxima").disabled = snapshot.docs.length < LIMITE;
+      document.getElementById("paginaAtual").textContent = `Página ${window.paginaAtualRelatorio}`;
+      
+    } else if (filtroData) {
+      // Buscar por data
+      const inicioDia = new Date(filtroData + "T00:00:00").getTime();
+      const fimDia = new Date(filtroData + "T23:59:59").getTime();
+      
+      q = query(
+        collection(db, "relatorioPedidos"),
+        orderBy("data", "desc"),
+        limit(LIMITE)
+      );
+      
+      if (window.ultimoDocRelatorio) {
+        q = query(
+          collection(db, "relatorioPedidos"),
+          orderBy("data", "desc"),
+          startAfter(window.ultimoDocRelatorio),
+          limit(LIMITE)
+        );
+      }
+      
+      const snapshot = await getDocs(q);
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.data >= inicioDia && data.data <= fimDia) {
+          dados.push(data);
+        }
+      });
+      
+      if (snapshot.docs.length > 0) {
+        window.ultimoDocRelatorio = snapshot.docs[snapshot.docs.length - 1];
+      }
+      
+      // Controles de paginação
+      document.getElementById("paginacaoControles").style.display = "block";
+      document.getElementById("btnAnterior").disabled = window.paginaAtualRelatorio === 1;
+      document.getElementById("btnProxima").disabled = snapshot.docs.length < LIMITE;
+      document.getElementById("paginaAtual").textContent = `Página ${window.paginaAtualRelatorio}`;
+    }
+    
+    renderHistorico(dados);
+  } catch (error) {
+    console.error("Erro ao buscar relatório:", error);
+    l.innerHTML = "<p>Erro ao carregar relatório.</p>";
+  }
+}
+
+async function proximaPagina() {
+  window.paginaAtualRelatorio++;
+  await carregarPaginaRelatorio();
+}
+
+async function paginaAnterior() {
+  if (window.paginaAtualRelatorio > 1) {
+    window.paginaAtualRelatorio--;
+    window.ultimoDocRelatorio = null; // Resetar para recarregar
+    await carregarPaginaRelatorio();
+  }
+}
+
+function limparRelatorio() {
+  if (prompt("Senha:") === SENHA) {
+    fetch(`${API_URL}/api/relatorio`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senha: SENHA })
+    }).then(() => renderHistorico());
+  }
+}
+function renderHistorico(dadosRelatorio) {
+  const l = document.getElementById("listaHistorico");
+  l.innerHTML = "";
+
+  if (!dadosRelatorio || dadosRelatorio.length === 0) {
+    l.innerHTML = "<p>Nenhum resultado encontrado.</p>";
+    return;
+  }
+
+  const mapa = {};
+
+  dadosRelatorio.forEach(r => {
+    if (!mapa[r.pedido]) mapa[r.pedido] = { eventos: [] };
+
+    if (r.tipo === "n1") {
+      mapa[r.pedido].eventos.push(r);
+    }
+
+    if (r.tipo === "n2") {
+      mapa[r.pedido].andar2 = r;
+    }
+  });
+
+  Object.keys(mapa)
+    .filter(p => {
+      const item = mapa[p];
+      return item.eventos.length >= 2;
+    })
+    .forEach(pedido => {
+      const d = document.createElement("div");
+      d.className = "historico-card";
+
+      const eventos = mapa[pedido].eventos;
+      const n2 = mapa[pedido].andar2;
+      
+      const primeiroEvento = eventos[0];
+      const segundoEvento = eventos[1];
+      
+      const separadores = eventos.map(e => e.operador).filter((v, i, a) => a.indexOf(v) === i);
+      
+      // Verificar se há participantes de atualização
+      const participantes = eventos.find(e => e.participouAtualizacao)?.participouAtualizacao || [];
+
+      d.innerHTML = `
+        Pedido: ${pedido}<br><br>
+
+        ${primeiroEvento ? `
+        Primeira Separação: ${primeiroEvento.operador}<br>
+        ${new Date(primeiroEvento.data).toLocaleDateString()} 
+        ${new Date(primeiroEvento.data).toLocaleTimeString()}<br><br>
+        ` : ""}
+
+        ${segundoEvento ? `
+        Confirmado por: ${segundoEvento.operador}<br>
+        ${new Date(segundoEvento.data).toLocaleDateString()} 
+        ${new Date(segundoEvento.data).toLocaleTimeString()}<br><br>
+        ` : ""}
+
+        Separadores envolvidos: ${separadores.join(", ") || "N/A"}<br><br>
+
+        ${participantes.length > 0 ? `
+        Participou da atualização: ${participantes.join(", ")}<br><br>
+        ` : ""}
+
+        ${n2 ? `
+        1º Andar: ${n2.operador}<br>
+        ${new Date(n2.data).toLocaleDateString()} 
+        ${new Date(n2.data).toLocaleTimeString()}
+        ` : "Sem participação do 1º andar"}
+      `;
+
+      l.appendChild(d);
+    });
+}
+
+// Expor renderHistorico globalmente
+window.renderHistorico = renderHistorico;
+
+// ===== UTIL =====
+async function apagarPedido(c) {
+  return new Promise(async (resolve) => {
+    const modal = document.getElementById("modalAutenticacao");
+    const conteudo = document.getElementById("conteudoAutenticacao");
+    const titulo = document.getElementById("tituloAutenticacao");
+    
+    // Passo 1: Código do operador
+    titulo.textContent = "Código do Operador";
+    conteudo.innerHTML = `
+      <input type="text" id="inputCodigoOp" placeholder="Digite o código do operador" style="width: 100%; padding: 10px; margin: 10px 0;">
+      <button onclick="validarCodigoOperador('${c}')" style="width: 100%; padding: 10px; background: #1F4E8C; color: white; border: none; cursor: pointer;">Continuar</button>
+      <button onclick="fecharAutenticacao()" style="width: 100%; padding: 10px; margin-top: 10px; background: #C0392B; color: white; border: none; cursor: pointer;">Cancelar</button>
+    `;
+    modal.style.display = "flex";
+  });
+}
+
+async function validarCodigoOperador(c) {
+  const codigoOperador = document.getElementById("inputCodigoOp").value.trim();
+  const nomeOperador = usuarios[codigoOperador];
+  
+  if (!nomeOperador) {
+    alert("Operador inválido.");
+    return;
+  }
+  
+  // Verificar se operador tem senha
+  const senhaDoc = await getDoc(doc(db, "senhasOperadores", codigoOperador));
+  
+  if (!senhaDoc.exists()) {
+    // Criar senha
+    criarSenhaOperador(c, codigoOperador, nomeOperador);
+  } else {
+    // Validar senha
+    validarSenhaOperador(c, codigoOperador, nomeOperador, senhaDoc.data().senha);
+  }
+}
+
+function criarSenhaOperador(c, codigoOperador, nomeOperador) {
+  const titulo = document.getElementById("tituloAutenticacao");
+  const conteudo = document.getElementById("conteudoAutenticacao");
+  
+  titulo.textContent = `Criar Senha - ${nomeOperador}`;
+  conteudo.innerHTML = `
+    <p style="margin-bottom: 10px;">Operador ainda não tem senha. Crie uma agora:</p>
+    <input type="password" id="inputNovaSenha" placeholder="Nova senha" style="width: 100%; padding: 10px; margin: 10px 0;">
+    <input type="password" id="inputConfirmaSenha" placeholder="Confirme a senha" style="width: 100%; padding: 10px; margin-bottom: 10px;">
+    <button onclick="salvarNovaSenha('${c}', '${codigoOperador}', '${nomeOperador}')" style="width: 100%; padding: 10px; background: #1F4E8C; color: white; border: none; cursor: pointer;">Salvar Senha</button>
+    <button onclick="fecharAutenticacao()" style="width: 100%; padding: 10px; margin-top: 10px; background: #C0392B; color: white; border: none; cursor: pointer;">Cancelar</button>
+  `;
+}
+
+async function salvarNovaSenha(c, codigoOperador, nomeOperador) {
+  const novaSenha = document.getElementById("inputNovaSenha").value;
+  const confirmaSenha = document.getElementById("inputConfirmaSenha").value;
+  
+  if (!novaSenha || novaSenha.length < 4) {
+    alert("A senha deve ter pelo menos 4 caracteres.");
+    return;
+  }
+  
+  if (novaSenha !== confirmaSenha) {
+    alert("As senhas não coincidem.");
+    return;
+  }
+  
+  await setDoc(doc(db, "senhasOperadores", codigoOperador), {
+    senha: novaSenha,
+    nome: nomeOperador,
+    dataCriacao: Date.now()
+  });
+  
+  // Agora pedir senha do separador
+  pedirSenhaSeparador(c, codigoOperador, nomeOperador);
+}
+
+function validarSenhaOperador(c, codigoOperador, nomeOperador, senhaCorreta) {
+  const titulo = document.getElementById("tituloAutenticacao");
+  const conteudo = document.getElementById("conteudoAutenticacao");
+  
+  titulo.textContent = `Senha do Operador - ${nomeOperador}`;
+  conteudo.innerHTML = `
+    <input type="password" id="inputSenhaOp" placeholder="Digite sua senha" style="width: 100%; padding: 10px; margin: 10px 0;">
+    <button onclick="verificarSenhaOperador('${c}', '${codigoOperador}', '${nomeOperador}', '${senhaCorreta}')" style="width: 100%; padding: 10px; background: #1F4E8C; color: white; border: none; cursor: pointer;">Continuar</button>
+    <button onclick="fecharAutenticacao()" style="width: 100%; padding: 10px; margin-top: 10px; background: #C0392B; color: white; border: none; cursor: pointer;">Cancelar</button>
+  `;
+}
+
+function verificarSenhaOperador(c, codigoOperador, nomeOperador, senhaCorreta) {
+  const senhaInformada = document.getElementById("inputSenhaOp").value;
+  
+  if (senhaInformada !== senhaCorreta) {
+    alert("Senha incorreta.");
+    return;
+  }
+  
+  // Pedir senha do separador
+  pedirSenhaSeparador(c, codigoOperador, nomeOperador);
+}
+
+function pedirSenhaSeparador(c, codigoOperador, nomeOperador) {
+  const titulo = document.getElementById("tituloAutenticacao");
+  const conteudo = document.getElementById("conteudoAutenticacao");
+  
+  titulo.textContent = "Senha do Separador";
+  conteudo.innerHTML = `
+    <input type="password" id="inputSenhaSep" placeholder="Digite a senha do separador" style="width: 100%; padding: 10px; margin: 10px 0;">
+    <button onclick="confirmarExclusao('${c}', '${codigoOperador}', '${nomeOperador}')" style="width: 100%; padding: 10px; background: #1F4E8C; color: white; border: none; cursor: pointer;">Excluir Pedido</button>
+    <button onclick="fecharAutenticacao()" style="width: 100%; padding: 10px; margin-top: 10px; background: #C0392B; color: white; border: none; cursor: pointer;">Cancelar</button>
+  `;
+}
+
+async function confirmarExclusao(c, codigoOperador, nomeOperador) {
+  const senhaSeparador = document.getElementById("inputSenhaSep").value;
+  
+  if (senhaSeparador !== SENHA) {
+    alert("Senha do separador incorreta.");
+    return;
+  }
+  
+  // Registrar auditoria
+  await addDoc(collection(db, "auditoriaExclusoes"), {
+    pedido: c,
+    operador: nomeOperador,
+    codigoOperador: codigoOperador,
+    dataExclusao: Date.now(),
+    timestamp: new Date().toISOString()
+  });
+  
+  // Excluir pedido
+  console.log("[DELETE][PEDIDO_ATIVO]", { codigo: c, operador: nomeOperador });
+  await deleteDoc(doc(db, "pedidosAtivos", c));
+  
+  fecharAutenticacao();
+  alert("Pedido excluído com sucesso.");
+}
+
+function fecharAutenticacao() {
+  document.getElementById("modalAutenticacao").style.display = "none";
+}
+
+// Expor função globalmente
+window.apagarPedido = apagarPedido;
+
+// Listener para evento de apagar pedido
+document.addEventListener("apagarPedido", async (e) => {
+  const c = e.detail;
+  await deleteDoc(doc(db, "pedidosAtivos", c));
+});
+
+function limparPedidos() {
+  if (prompt("Senha:") === SENHA) {
+    console.log("[LIMPAR][PEDIDOS_ATIVOS]");
+    fetch(`${API_URL}/api/pedidos-limpar`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senha: SENHA })
+    }).then(() => render());
+  }
+}
+function toggleTV() {
+  document.body.classList.toggle("modo-tv");
+  render();
+}
+</script>
+
+<script>
+// Funções globais acessíveis do HTML
+window.abrirAndar = function() {
+  document.getElementById("modalAndar").style.display = "flex";
+}
+window.fecharAndar = function() {
+  document.getElementById("modalAndar").style.display = "none";
+}
+window.abrirHistorico = function() {
+  if (prompt("Senha:") !== "1617") return;
+  document.getElementById("modalHistorico").style.display = "flex";
+  window.renderHistorico();
+}
+window.fecharHistorico = function() {
+  document.getElementById("modalHistorico").style.display = "none";
+}
+window.limparRelatorio = function() {
+  if (prompt("Senha:") === "1617") {
+    fetch(window.location.origin + "/api/relatorio", {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senha: "1617" })
+    }).then(() => window.renderHistorico());
+  }
+}
+window.apagarPedido = function(c) {
+  if (confirm("Apagar pedido " + c + "?")) {
+    // Será executado pela função no módulo
+    const event = new CustomEvent("apagarPedido", { detail: c });
+    document.dispatchEvent(event);
+  }
+}
+window.limparPedidos = function() {
+  if (prompt("Senha:") === "1617") {
+    fetch(window.location.origin + "/api/pedidos-limpar", {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senha: "1617" })
+    }).then(() => window.render());
+  }
+}
+window.toggleTV = function() {
+  document.body.classList.toggle("modo-tv");
+  window.render();
+}
+window.abrirRanked = async function() {
+  if (FIRESTORE_SAFE_MODE) {
+    alert("⚠️ Ranking desativado no modo de segurança");
+    return;
+  }
+  if(prompt("Senha:")!=="1617") return;
+  
+  // Verificar cache de ranking
+  if (isCacheValid('ranking')) {
+    ranked = cache.ranking.data;
+    window.ranked = ranked;
+    console.log("Ranking carregado do cache");
+  } else {
+    // Carregar dados do ranking do Firestore
+    const rankingDoc = await getDoc(doc(db, "ranking", "mesAtual"));
+    if (rankingDoc.exists()) {
+      ranked = rankingDoc.data();
+      window.ranked = ranked;
+      setCache('ranking', ranked);
+    } else {
+      ranked = { n1: {}, n2: {} };
+      window.ranked = ranked;
+      setCache('ranking', ranked);
+    }
+  }
+  
+  // Verificar cache de histórico
+  if (isCacheValid('historicoRanking')) {
+    historicoRanked = cache.historicoRanking.data;
+    window.historicoRanked = historicoRanked;
+    console.log("Histórico de ranking carregado do cache");
+  } else {
+    // Carregar histórico
+    const historicoSnapshot = await getDocs(collection(db, "historicoRanking"));
+    historicoRanked = [];
+    historicoSnapshot.forEach(doc => {
+      historicoRanked.push(doc.data());
+    });
+    window.historicoRanked = historicoRanked;
+    setCache('historicoRanking', historicoRanked);
+  }
+  
+  console.log("Dados de ranking:", { ranked: window.ranked, historicoRanked: window.historicoRanked });
+  document.getElementById("modalRanked").style.display="flex";
+  window.renderRanked();
+}
+window.fecharRanked = function() {
+  document.getElementById("modalRanked").style.display="none";
+}
+window.limparRanked = function() {
+  if(prompt("Senha:")!=="1617") {
+    return;
+  }
+  ranked={ n1:{}, n2:{} };
+  limparRankingFirestore();
+  window.renderRanked();
+}
+window.listarRank = function(obj){
+  let html="<div class='ranked-box'>";
+  const lista=Object.entries(obj)
+    .filter(([nome]) => nome && nome !== "undefined" && nome !== "null") // Filtrar nomes vazios/undefined
+    .sort((a,b)=>b[1]-a[1]);
+  lista.forEach(([nome,pontos])=> html+=`${usuarios[nome] || nome}: ${pontos}<br>`);
+  html+="</div>";
+  return html;
+}
+window.renderRanked = function(){
+  const box=document.getElementById("rankedAtual");
+  const hist=document.getElementById("rankedHistorico");
+
+  const n1 = (window.ranked && window.ranked.n1) || {};
+  const n2 = (window.ranked && window.ranked.n2) || {};
+
+  box.innerHTML=`
+    <h3>Mês Atual — Térreo</h3>
+    ${window.listarRank(n1)}
+    <h3>Mês Atual — 1º Andar</h3>
+    ${window.listarRank(n2)}
+  `;
+
+  hist.innerHTML="<h3>Histórico Mensal</h3>";
+
+  if (window.historicoRanked && window.historicoRanked.length > 0) {
+    window.historicoRanked.forEach(reg=>{
+      const rankingN1 = (reg.ranking && reg.ranking.n1) || {};
+      const rankingN2 = (reg.ranking && reg.ranking.n2) || {};
+      
+      hist.innerHTML+=`
+        <div class="ranked-box">
+          <strong>${reg.mes}</strong><br><br>
+          <u>Térreo</u><br>${window.listarRank(rankingN1)}
+          <u>1º Andar</u><br>${window.listarRank(rankingN2)}
+        </div>
+      `;
+    });
+  } else {
+    hist.innerHTML += "<p>Sem histórico ainda</p>";
+  }
+}
+</script>
+
+</body>
+</html>

@@ -6,3 +6,6 @@ node_modules/
 dist/
 build/
 separacao-51e82-firebase-adminsdk-fbsvc-ff690cda13.json
+separa-api-firebase-adminsdk-fbsvc-83883838b0.json
+*firebase-adminsdk*.json
+Backup/*firebase-adminsdk*.json

@@ -1,3 +1,29 @@
 {
-  "indexes": []
+  "indexes": [
+    {
+      "collectionGroup": "relatorioPedidos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "data",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "relatorioPedidos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pedido",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "data",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
 }

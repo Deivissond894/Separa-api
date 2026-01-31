@@ -126,25 +126,31 @@ body.modo-tv .container{
   padding:15px;
 }
 
-/* GRID TV - 2 colunas fixas */
-.tv-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+/* GRID TV - 4 colunas (2 separação + 2 confirmados) */
+.tv-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
 .tv-col{min-height:80vh}
+.tv-header{
+  grid-column: span 2; /* Cabeçalho ocupa 2 colunas */
+  margin-bottom:8px;
+}
 .tv-title{
   color:#fff;
-  font-size:2.2vw;
+  font-size:1.8vw;
   font-weight:bold;
-  margin-bottom:8px;
   text-align:center;
+  padding:8px;
+  background:rgba(255,255,255,0.1);
+  border-radius:8px;
 }
 body.modo-tv .card{
-  padding:2vh 2.5vh;
-  margin-top:1.2vh;
-  border-radius:12px;
-  font-size:2.2vw;
+  padding:1.5vh 2vh;
+  margin-top:1vh;
+  border-radius:10px;
+  font-size:1.6vw;
   line-height:1.3;
 }
-body.modo-tv .timer{font-size:1.8vw;margin-top:4px}
-body.modo-tv .status-text{font-size:2vw;margin-top:4px}
+body.modo-tv .timer{font-size:1.4vw;margin-top:4px}
+body.modo-tv .status-text{font-size:1.5vw;margin-top:4px}
 
 /* MODAIS */
 .modal{
@@ -173,10 +179,45 @@ body.modo-tv .status-text{font-size:2vw;margin-top:4px}
 .close{cursor:pointer;font-size:20px;font-weight:bold}
 
 .historico-card{
-  background:#e2e3e5;
-  padding:12px;
-  border-radius:6px;
+  background:#fff;
+  padding:8px 12px;
+  border-radius:4px;
+  margin-top:6px;
+  border-left:4px solid #1F4E8C;
+  font-size:13px;
+  display:grid;
+  grid-template-columns: 80px 1fr 1fr 1fr;
+  gap:10px;
+  align-items:center;
+  cursor:pointer;
+  transition:all 0.2s;
+}
+.historico-card:hover{
+  background:#f8f9fa;
+  box-shadow:0 2px 4px rgba(0,0,0,0.1);
+}
+.historico-card.expandido{
+  grid-template-columns: 1fr;
+  background:#e8f4f8;
+}
+.historico-pedido{
+  font-weight:bold;
+  color:#1F4E8C;
+  font-size:16px;
+}
+.historico-info{
+  color:#666;
+  font-size:12px;
+}
+.historico-detalhes{
+  display:none;
   margin-top:10px;
+  padding-top:10px;
+  border-top:1px solid #ddd;
+  grid-column:1/-1;
+}
+.historico-card.expandido .historico-detalhes{
+  display:block;
 }
 
 .ranked-box{background:#f2f2f2;padding:10px;border-radius:6px;margin-top:10px;font-size:15px}
@@ -187,6 +228,27 @@ body.modo-tv .status-text{font-size:2vw;margin-top:4px}
   color:#1F4E8C;
   margin-top:6px;
   display:none;
+}
+
+/* SPINNER DE CARREGAMENTO */
+.loading-spinner{
+  display:inline-block;
+  width:40px;
+  height:40px;
+  border:4px solid #f3f3f3;
+  border-top:4px solid #1F4E8C;
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+  margin:20px auto;
+}
+@keyframes spin{
+  0%{transform:rotate(0deg)}
+  100%{transform:rotate(360deg)}
+}
+.loading-container{
+  text-align:center;
+  padding:30px;
+  color:#666;
 }
 </style>
 </head>
@@ -799,13 +861,30 @@ function render() {
     const grid = document.createElement("div");
     grid.className = "tv-grid";
 
-    const colSep = document.createElement("div");
-    colSep.className = "tv-col";
-    colSep.innerHTML = `<div class="tv-title">Pedidos em Separação</div>`;
+    // Headers que ocupam 2 colunas cada
+    const headerSep = document.createElement("div");
+    headerSep.className = "tv-header";
+    headerSep.innerHTML = `<div class="tv-title">Pedidos em Separação</div>`;
 
-    const colConfirmado = document.createElement("div");
-    colConfirmado.className = "tv-col";
-    colConfirmado.innerHTML = `<div class="tv-title">Pedidos Confirmados</div>`;
+    const headerConf = document.createElement("div");
+    headerConf.className = "tv-header";
+    headerConf.innerHTML = `<div class="tv-title">Pedidos Confirmados</div>`;
+
+    // 4 colunas de conteúdo
+    const colSep1 = document.createElement("div");
+    colSep1.className = "tv-col";
+
+    const colSep2 = document.createElement("div");
+    colSep2.className = "tv-col";
+
+    const colConfirmado1 = document.createElement("div");
+    colConfirmado1.className = "tv-col";
+
+    const colConfirmado2 = document.createElement("div");
+    colConfirmado2.className = "tv-col";
+
+    let contadorSep = 0;
+    let contadorConf = 0;
 
     lista.forEach(([c, p]) => {
       const statusTexto = p.status === "confirmado" ? "Confirmado" : p.status === "histórico" ? "Histórico" : "Em separação";
@@ -825,20 +904,39 @@ function render() {
         ` : ""}
   ${p.status === "confirmado" && p.tempoExpiracao ? `<div class="timer" id="timer-${c}"></div>` : ""}
       `;
-      // Prioridade: confirmado vai sempre para colConfirmado
-      // separacao vai para colSep
-      // histórico vai para colConfirmado também (mas com estilo diferente)
+      
+      // Distribuir entre as colunas alternadamente
       if (p.status === "separacao") {
-        colSep.appendChild(d);
+        if (contadorSep % 2 === 0) {
+          colSep1.appendChild(d);
+        } else {
+          colSep2.appendChild(d);
+        }
+        contadorSep++;
       } else if (p.status === "confirmado") {
-        colConfirmado.appendChild(d); // Prioridade de exibição
+        if (contadorConf % 2 === 0) {
+          colConfirmado1.appendChild(d);
+        } else {
+          colConfirmado2.appendChild(d);
+        }
+        contadorConf++;
       } else {
-        colConfirmado.appendChild(d); // histórico na coluna confirmado
+        // histórico vai para confirmados alternadamente
+        if (contadorConf % 2 === 0) {
+          colConfirmado1.appendChild(d);
+        } else {
+          colConfirmado2.appendChild(d);
+        }
+        contadorConf++;
       }
     });
 
-    grid.appendChild(colSep);
-    grid.appendChild(colConfirmado);
+    grid.appendChild(headerSep);
+    grid.appendChild(headerConf);
+    grid.appendChild(colSep1);
+    grid.appendChild(colSep2);
+    grid.appendChild(colConfirmado1);
+    grid.appendChild(colConfirmado2);
     cards.appendChild(grid);
   } else {
     lista.forEach(([c, p]) => {
@@ -984,7 +1082,7 @@ async function aplicarFiltroRelatorio() {
   
   // Resetar paginação
   window.paginaAtualRelatorio = 1;
-  window.ultimoDocRelatorio = null;
+  window.ultimoDocIdRelatorio = null;
   window.filtroAtualRelatorio = { filtroData, filtroPedido };
   
   await carregarPaginaRelatorio();
@@ -992,93 +1090,53 @@ async function aplicarFiltroRelatorio() {
 
 async function carregarPaginaRelatorio() {
   const l = document.getElementById("listaHistorico");
-  l.innerHTML = "<p>Carregando...</p>";
+  l.innerHTML = `
+    <div class="loading-container">
+      <div class="loading-spinner"></div>
+      <p>Carregando relatório...</p>
+    </div>
+  `;
   
   const { filtroData, filtroPedido } = window.filtroAtualRelatorio;
-  const LIMITE = 10;
+  const ITENS_POR_PAGINA = 10;
   
   try {
-    let dados = [];
-    let q;
+    // Construir URL com parâmetros
+    const params = new URLSearchParams({
+      itensPorPagina: ITENS_POR_PAGINA,
+      pagina: window.paginaAtualRelatorio
+    });
     
-    if (filtroPedido) {
-      // Buscar por pedido específico
-      q = query(
-        collection(db, "relatorioPedidos"),
-        orderBy("data", "desc"),
-        limit(LIMITE)
-      );
-      
-      if (window.ultimoDocRelatorio) {
-        q = query(
-          collection(db, "relatorioPedidos"),
-          orderBy("data", "desc"),
-          startAfter(window.ultimoDocRelatorio),
-          limit(LIMITE)
-        );
-      }
-      
-      const snapshot = await getDocs(q);
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        if (data.pedido === filtroPedido) {
-          dados.push(data);
-        }
-      });
-      
-      if (snapshot.docs.length > 0) {
-        window.ultimoDocRelatorio = snapshot.docs[snapshot.docs.length - 1];
-      }
-      
-      // Controles de paginação
-      document.getElementById("paginacaoControles").style.display = "block";
-      document.getElementById("btnAnterior").disabled = window.paginaAtualRelatorio === 1;
-      document.getElementById("btnProxima").disabled = snapshot.docs.length < LIMITE;
-      document.getElementById("paginaAtual").textContent = `Página ${window.paginaAtualRelatorio}`;
-      
-    } else if (filtroData) {
-      // Buscar por data
-      const inicioDia = new Date(filtroData + "T00:00:00").getTime();
-      const fimDia = new Date(filtroData + "T23:59:59").getTime();
-      
-      q = query(
-        collection(db, "relatorioPedidos"),
-        orderBy("data", "desc"),
-        limit(LIMITE)
-      );
-      
-      if (window.ultimoDocRelatorio) {
-        q = query(
-          collection(db, "relatorioPedidos"),
-          orderBy("data", "desc"),
-          startAfter(window.ultimoDocRelatorio),
-          limit(LIMITE)
-        );
-      }
-      
-      const snapshot = await getDocs(q);
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        if (data.data >= inicioDia && data.data <= fimDia) {
-          dados.push(data);
-        }
-      });
-      
-      if (snapshot.docs.length > 0) {
-        window.ultimoDocRelatorio = snapshot.docs[snapshot.docs.length - 1];
-      }
-      
-      // Controles de paginação
-      document.getElementById("paginacaoControles").style.display = "block";
-      document.getElementById("btnAnterior").disabled = window.paginaAtualRelatorio === 1;
-      document.getElementById("btnProxima").disabled = snapshot.docs.length < LIMITE;
-      document.getElementById("paginaAtual").textContent = `Página ${window.paginaAtualRelatorio}`;
-    }
+    if (filtroData) params.append('filtroData', filtroData);
+    if (filtroPedido) params.append('filtroPedido', filtroPedido);
+    if (window.ultimoDocIdRelatorio) params.append('ultimoDocId', window.ultimoDocIdRelatorio);
     
-    renderHistorico(dados);
+    console.log('[RELATORIO] Buscando otimizado:', { 
+      filtroData, 
+      filtroPedido, 
+      pagina: window.paginaAtualRelatorio,
+      ultimoDocId: window.ultimoDocIdRelatorio
+    });
+    
+    // Buscar via API otimizada
+    const response = await fetch(`${API_URL}/api/relatorio/buscar?${params.toString()}`);
+    const resultado = await response.json();
+    
+    console.log('[RELATORIO] Resultado otimizado:', resultado);
+    
+    // Atualizar cursor para próxima página
+    window.ultimoDocIdRelatorio = resultado.ultimoDocId;
+    
+    // Controles de paginação
+    document.getElementById("paginacaoControles").style.display = resultado.dados.length > 0 ? "block" : "none";
+    document.getElementById("btnAnterior").disabled = window.paginaAtualRelatorio === 1;
+    document.getElementById("btnProxima").disabled = !resultado.temMais;
+    document.getElementById("paginaAtual").textContent = `Página ${window.paginaAtualRelatorio} (${resultado.totalNaPagina} resultados) - 💰 ${resultado.totalNaPagina} leituras`;
+    
+    renderHistorico(resultado.dados);
   } catch (error) {
-    console.error("Erro ao buscar relatório:", error);
-    l.innerHTML = "<p>Erro ao carregar relatório.</p>";
+    console.error("[RELATORIO] Erro ao buscar:", error);
+    l.innerHTML = `<p>Erro ao carregar relatório: ${error.message}</p>`;
   }
 }
 
@@ -1090,10 +1148,27 @@ async function proximaPagina() {
 async function paginaAnterior() {
   if (window.paginaAtualRelatorio > 1) {
     window.paginaAtualRelatorio--;
-    window.ultimoDocRelatorio = null; // Resetar para recarregar
+    // Resetar cursor - vai precisar buscar novamente desde o início
+    window.ultimoDocIdRelatorio = null;
+    
+    // Se não for página 1, precisamos reconstruir o cursor
+    if (window.paginaAtualRelatorio > 1) {
+      // Por simplicidade, vamos resetar para página 1
+      // Uma solução mais complexa seria armazenar um array de cursores
+      alert("⚠️ Para voltar páginas, use o botão 'Limpar' e pesquise novamente");
+      window.paginaAtualRelatorio = 1;
+    }
+    
     await carregarPaginaRelatorio();
   }
 }
+
+// Expor funções globalmente para onclick
+window.aplicarFiltroRelatorio = aplicarFiltroRelatorio;
+window.proximaPagina = proximaPagina;
+window.paginaAnterior = paginaAnterior;
+window.limparRelatorio = limparRelatorio;
+window.fecharHistorico = fecharHistorico;
 
 function limparRelatorio() {
   if (prompt("Senha:") === SENHA) {
@@ -1109,7 +1184,13 @@ function renderHistorico(dadosRelatorio) {
   l.innerHTML = "";
 
   if (!dadosRelatorio || dadosRelatorio.length === 0) {
-    l.innerHTML = "<p>Nenhum resultado encontrado.</p>";
+    l.innerHTML = `
+      <div style="text-align:center; padding:30px; color:#666;">
+        <p style="font-size:18px; margin-bottom:10px;">📋</p>
+        <p style="font-weight:bold;">Nenhum resultado encontrado</p>
+        <p style="font-size:13px; margin-top:5px;">Tente ajustar os filtros de busca</p>
+      </div>
+    `;
     return;
   }
 
@@ -1148,32 +1229,54 @@ function renderHistorico(dadosRelatorio) {
       const participantes = eventos.find(e => e.participouAtualizacao)?.participouAtualizacao || [];
 
       d.innerHTML = `
-        Pedido: ${pedido}<br><br>
-
-        ${primeiroEvento ? `
-        Primeira Separação: ${primeiroEvento.operador}<br>
-        ${new Date(primeiroEvento.data).toLocaleDateString()} 
-        ${new Date(primeiroEvento.data).toLocaleTimeString()}<br><br>
-        ` : ""}
-
-        ${segundoEvento ? `
-        Confirmado por: ${segundoEvento.operador}<br>
-        ${new Date(segundoEvento.data).toLocaleDateString()} 
-        ${new Date(segundoEvento.data).toLocaleTimeString()}<br><br>
-        ` : ""}
-
-        Separadores envolvidos: ${separadores.join(", ") || "N/A"}<br><br>
-
-        ${participantes.length > 0 ? `
-        Participou da atualização: ${participantes.join(", ")}<br><br>
-        ` : ""}
-
-        ${n2 ? `
-        1º Andar: ${n2.operador}<br>
-        ${new Date(n2.data).toLocaleDateString()} 
-        ${new Date(n2.data).toLocaleTimeString()}
-        ` : "Sem participação do 1º andar"}
+        <div class="historico-pedido">#${pedido}</div>
+        <div class="historico-info">
+          <strong>Separado:</strong> ${primeiroEvento?.operador || 'N/A'}<br>
+          <small>${primeiroEvento ? new Date(primeiroEvento.data).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : ''}</small>
+        </div>
+        <div class="historico-info">
+          <strong>Confirmado:</strong> ${segundoEvento?.operador || 'N/A'}<br>
+          <small>${segundoEvento ? new Date(segundoEvento.data).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : ''}</small>
+        </div>
+        <div class="historico-info">
+          <strong>🔽 Detalhes</strong>
+        </div>
+        <div class="historico-detalhes">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+            <div>
+              <strong>📋 Primeira Separação:</strong><br>
+              Operador: ${primeiroEvento?.operador || 'N/A'}<br>
+              Data: ${primeiroEvento ? new Date(primeiroEvento.data).toLocaleDateString('pt-BR') : ''}<br>
+              Hora: ${primeiroEvento ? new Date(primeiroEvento.data).toLocaleTimeString('pt-BR') : ''}
+            </div>
+            <div>
+              <strong>✅ Confirmação:</strong><br>
+              Operador: ${segundoEvento?.operador || 'N/A'}<br>
+              Data: ${segundoEvento ? new Date(segundoEvento.data).toLocaleDateString('pt-BR') : ''}<br>
+              Hora: ${segundoEvento ? new Date(segundoEvento.data).toLocaleTimeString('pt-BR') : ''}
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <strong>👥 Separadores envolvidos:</strong> ${separadores.join(", ") || "N/A"}
+          </div>
+          ${participantes.length > 0 ? `
+          <div style="margin-top:10px;">
+            <strong>🔄 Participou da atualização:</strong> ${participantes.join(", ")}
+          </div>
+          ` : ""}
+          ${n2 ? `
+          <div style="margin-top:10px;">
+            <strong>🏢 1º Andar:</strong> ${n2.operador}<br>
+            Data: ${new Date(n2.data).toLocaleDateString('pt-BR')} ${new Date(n2.data).toLocaleTimeString('pt-BR')}
+          </div>
+          ` : `<div style="margin-top:10px; color:#999;">Sem participação do 1º andar</div>`}
+        </div>
       `;
+
+      // Toggle expand/collapse
+      d.addEventListener('click', function() {
+        this.classList.toggle('expandido');
+      });
 
       l.appendChild(d);
     });

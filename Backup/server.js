@@ -313,6 +313,79 @@ app.post('/api/relatorio', async (req, res) => {
   }
 });
 
+// ===== RELATÓRIO OTIMIZADO COM PAGINAÇÃO =====
+app.get('/api/relatorio/buscar', async (req, res) => {
+  try {
+    const { filtroData, filtroPedido, pagina = 1, itensPorPagina = 10, ultimoDocId } = req.query;
+    
+    const resultado = await executeWithFallback(async (database) => {
+      let query = database.collection('relatorioPedidos');
+      
+      // Filtro por pedido específico
+      if (filtroPedido) {
+        console.log('[API][RELATORIO_BUSCAR] Filtrando por pedido:', filtroPedido);
+        query = query.where('pedido', '==', parseInt(filtroPedido));
+        query = query.orderBy('data', 'desc');
+      }
+      // Filtro por data
+      else if (filtroData) {
+        const inicioDia = new Date(filtroData + "T00:00:00").getTime();
+        const fimDia = new Date(filtroData + "T23:59:59").getTime();
+        
+        console.log('[API][RELATORIO_BUSCAR] Filtrando por data:', { filtroData, inicioDia, fimDia });
+        
+        query = query.where('data', '>=', inicioDia)
+                     .where('data', '<=', fimDia)
+                     .orderBy('data', 'desc');
+      }
+      // Sem filtro: ordenar por data apenas
+      else {
+        query = query.orderBy('data', 'desc');
+      }
+      
+      // Paginação com cursor (se houver)
+      if (ultimoDocId) {
+        const ultimoDoc = await database.collection('relatorioPedidos').doc(ultimoDocId).get();
+        if (ultimoDoc.exists) {
+          query = query.startAfter(ultimoDoc);
+        }
+      }
+      
+      // Limitar resultados
+      query = query.limit(parseInt(itensPorPagina));
+      
+      const snapshot = await query.get();
+      
+      const dados = [];
+      let ultimoDocumento = null;
+      
+      snapshot.forEach(doc => {
+        dados.push({ id: doc.id, ...doc.data() });
+        ultimoDocumento = doc.id;
+      });
+      
+      console.log('[API][RELATORIO_BUSCAR] Resultados:', {
+        total: dados.length,
+        pagina,
+        db: currentDBName,
+        leituras: snapshot.size
+      });
+      
+      return {
+        dados,
+        ultimoDocId: ultimoDocumento,
+        temMais: snapshot.size === parseInt(itensPorPagina),
+        totalNaPagina: dados.length
+      };
+    }, 'BUSCAR_RELATORIO');
+    
+    res.json(resultado);
+  } catch (err) {
+    console.error('[API][ERROR]/api/relatorio/buscar', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ===== RANKING =====
 app.get('/api/ranking', async (req, res) => {
   try {

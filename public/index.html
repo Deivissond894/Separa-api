@@ -127,23 +127,29 @@ body.modo-tv .container{
 }
 
 /* GRID TV */
-.tv-grid{display:grid;grid-template-columns:1fr 1fr;gap:30px}
+.tv-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:15px}
 .tv-col{min-height:80vh}
 .tv-title{
   color:#fff;
-  font-size:3vw;
+  font-size:2.5vw;
   font-weight:bold;
   margin-bottom:10px;
   text-align:center;
+  grid-column:span 2;
 }
 body.modo-tv .card{
-  padding:4vh;
-  margin-top:3vh;
-  border-radius:16px;
-  font-size:3vw;
+  padding:3vh;
+  margin-top:2vh;
+  border-radius:12px;
+  font-size:4vw;
+  text-align:center;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:10vh;
 }
-body.modo-tv .timer{font-size:2.5vw}
-body.modo-tv .status-text{font-size:2.3vw}
+body.modo-tv .timer{display:none}
+body.modo-tv .status-text{display:none}
 
 /* MODAIS */
 .modal{
@@ -674,46 +680,68 @@ function render() {
     const grid = document.createElement("div");
     grid.className = "tv-grid";
 
-    const colSep = document.createElement("div");
-    colSep.className = "tv-col";
-    colSep.innerHTML = `<div class="tv-title">Pedidos em Separação</div>`;
+    // Título Separação
+    const tituloSep = document.createElement("div");
+    tituloSep.className = "tv-title";
+    tituloSep.textContent = "Pedidos em Separação";
 
-    const colConfirmado = document.createElement("div");
-    colConfirmado.className = "tv-col";
-    colConfirmado.innerHTML = `<div class="tv-title">Pedidos Confirmados</div>`;
+    // Título Confirmados
+    const tituloConf = document.createElement("div");
+    tituloConf.className = "tv-title";
+    tituloConf.textContent = "Pedidos Confirmados";
+
+    // 2 colunas para separação
+    const colSep1 = document.createElement("div");
+    colSep1.className = "tv-col";
+    const colSep2 = document.createElement("div");
+    colSep2.className = "tv-col";
+
+    // 2 colunas para confirmados
+    const colConf1 = document.createElement("div");
+    colConf1.className = "tv-col";
+    const colConf2 = document.createElement("div");
+    colConf2.className = "tv-col";
+
+    // Separar pedidos
+    const pedidosSep = [];
+    const pedidosConf = [];
 
     lista.forEach(([c, p]) => {
-      const statusTexto = p.status === "confirmado" ? "Confirmado" : p.status === "histórico" ? "Histórico" : "Em separação";
       const d = document.createElement("div");
       d.className = "card " + p.status;
       d.id = `card-${c}`;
-      d.innerHTML = `
-        Pedido: ${c}
-        <div class="status-text">Status: ${statusTexto}</div>
-        ${p.status === "histórico" ? `<div class="info-operador">Tipo: ${p.tipo === "n1" ? "Térreo" : "1º Andar"}</div>` : ""}
-        ${p.status === "histórico" ? `<div class="info-operador">Operador: ${p.operador}</div>` : ""}
-        ${p.iniciou ? `<div class="info-operador">Térreo — Iniciou: ${p.iniciou}</div>` : ""}
-        ${p.finalizou ? `<div class="info-operador">Térreo — Finalizou: ${p.finalizou}</div>` : ""}
-        ${p.andar2 ? `
-          <div class="info-operador">1º Andar — Iniciou: ${p.andar2.inicio}</div>
-          ${p.andar2.finalizou ? `<div class="info-operador">1º Andar — Finalizou: ${p.andar2.finalizou}</div>` : ""}
-        ` : ""}
-        ${p.status === "confirmado" && p.tempoExpiracao ? `<div class="timer" id="timer-${c}"></div>` : ""}
-      `;
-      // Prioridade: confirmado vai sempre para colConfirmado
-      // separacao vai para colSep
-      // histórico vai para colConfirmado também (mas com estilo diferente)
+      d.innerHTML = c; // Apenas o número do pedido
+      
       if (p.status === "separacao") {
-        colSep.appendChild(d);
-      } else if (p.status === "confirmado") {
-        colConfirmado.appendChild(d); // Prioridade de exibição
+        pedidosSep.push(d);
       } else {
-        colConfirmado.appendChild(d); // histórico na coluna confirmado
+        pedidosConf.push(d);
       }
     });
 
-    grid.appendChild(colSep);
-    grid.appendChild(colConfirmado);
+    // Distribuir em colunas alternadas
+    pedidosSep.forEach((card, i) => {
+      if (i % 2 === 0) {
+        colSep1.appendChild(card);
+      } else {
+        colSep2.appendChild(card);
+      }
+    });
+
+    pedidosConf.forEach((card, i) => {
+      if (i % 2 === 0) {
+        colConf1.appendChild(card);
+      } else {
+        colConf2.appendChild(card);
+      }
+    });
+
+    grid.appendChild(tituloSep);
+    grid.appendChild(tituloConf);
+    grid.appendChild(colSep1);
+    grid.appendChild(colSep2);
+    grid.appendChild(colConf1);
+    grid.appendChild(colConf2);
     cards.appendChild(grid);
   } else {
     lista.forEach(([c, p]) => {

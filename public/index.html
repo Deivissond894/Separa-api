@@ -370,6 +370,7 @@ onSnapshot(collection(db, "pedidosAtivos"), (snapshot) => {
   snapshot.forEach(doc => {
     pedidos[doc.id] = doc.data();
   });
+  playSound();
   render();
 });
 
@@ -437,6 +438,7 @@ scanner.addEventListener("keydown", async (e) => {
     scanner.value = "";
     if (!c || !operadorAtual) return;
 
+    playSound();
     const agora = Date.now();
     
     if (!pedidos[c]) {
@@ -567,6 +569,7 @@ scanner2.addEventListener("keydown", async (e) => {
     scanner2.value = "";
     if (!c || !operador2) return;
 
+    playSound();
     const agora = Date.now();
 
     if (!pedidos[c]) {
@@ -1128,7 +1131,18 @@ window.renderRanked = function(){
     hist.innerHTML += "<p>Sem histórico ainda</p>";
   }
 }
+
+// ===== EFEITO SONORO =====
+const audioSound = new Audio('recording-20260301-111943_rYCiiIkl.mp3');
+function playSound() {
+  audioSound.currentTime = 0;
+  audioSound.play().catch(err => console.log("Áudio não pode ser reproduzido:", err));
+}
 </script>
+
+<audio id="bipeSound" preload="auto">
+  <source src="recording-20260301-111943_rYCiiIkl.mp3" type="audio/mpeg">
+</audio>
 
 </body>
 </html>

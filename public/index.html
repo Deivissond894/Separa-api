@@ -621,10 +621,13 @@ document.addEventListener("input", (e) => {
   if (e.target.id === "neoOperador") {
     const codigo = e.target.value.trim();
     const nomeDiv = document.getElementById("neoNomeOperador");
+    const pecaInput = document.getElementById("neoPeca");
     
     if (codigo && usuarios[codigo]) {
       nomeDiv.innerHTML = `Operador: <span style="color:#0B2E5F;font-weight:bold;">${usuarios[codigo]}</span>`;
       nomeDiv.style.display = "block";
+      // Mover cursor para campo de peça
+      pecaInput.focus();
     } else if (codigo) {
       nomeDiv.innerHTML = `<span style="color:#C0392B;">Operador não encontrado</span>`;
       nomeDiv.style.display = "block";

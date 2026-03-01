@@ -679,23 +679,22 @@ window.salvarNaoEncontrado = async function() {
       resolvido: false
     });
     
-    // Marcar o pedido como não encontrado
-    const cardElement = document.getElementById(`card-${pedidoSelecionadoNeo}`);
-    if (cardElement) {
-      cardElement.style.opacity = "0.4";
-      cardElement.style.background = "#C0392B";
-      cardElement.style.color = "#fff";
+    // Se estiver em Modo TV: mostrar overlay
+    if (document.body.classList.contains("modo-tv")) {
+      mostrarAlertaNaoEncontrado(pedidoSelecionadoNeo);
     }
     
-    // Mostrar alerta
-    mostrarAlertaNaoEncontrado(pedidoSelecionadoNeo);
+    // Se estiver em modo normal: deixar card vermelho
+    if (!document.body.classList.contains("modo-tv")) {
+      const cardElement = document.getElementById(`card-${pedidoSelecionadoNeo}`);
+      if (cardElement) {
+        cardElement.style.background = "#C0392B";
+        cardElement.style.color = "#fff";
+        cardElement.style.opacity = "0.6";
+      }
+    }
     
     fecharNaoEncontrado();
-    
-    // Recarregar após 5 segundos para refletir mudanças
-    setTimeout(() => {
-      render();
-    }, 5000);
     
   } catch (err) {
     console.error("Erro ao salvar:", err);

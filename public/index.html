@@ -784,12 +784,12 @@ function mostrarAlertaNaoEncontradoTV(pedido, codigoPeca) {
   overlay.appendChild(card);
   document.body.appendChild(overlay);
   
-  // Remover após 5 segundos
+  // Remover após 10 segundos (dá tempo de ver bem)
   setTimeout(() => {
     overlay.style.opacity = "0";
     overlay.style.transition = "opacity 0.5s ease-out";
     setTimeout(() => overlay.remove(), 500);
-  }, 5000);
+  }, 10000);
 }
 
 usuario2.addEventListener("input", () => {
@@ -1068,6 +1068,7 @@ function render() {
           ${p.andar2.finalizou ? `<div class="info-operador">1º Andar — Finalizou: ${p.andar2.finalizou}</div>` : ""}
         ` : ""}
         ${p.status === "confirmado" && p.tempoExpiracao ? `<div class="timer" id="timer-${c}"></div>` : ""}
+        ${p.naoEncontradoEm && p.tempoDesapareceNaoEncontrado ? `<div class="timer" id="timer-nao-encontrado-${c}" style="color: #fff; font-weight: bold;"></div>` : ""}
       `;
       
       // Botões de ação
@@ -1192,6 +1193,7 @@ function removerPedidoVencido(codigo) {
 function atualizarTimerVisual() {
   const agora = Date.now();
   Object.entries(pedidos).forEach(([c, p]) => {
+    // Timer para pedidos confirmados
     if (p.status === "confirmado" && p.tempoExpiracao) {
       const tempoRestante = p.tempoExpiracao - agora;
       
@@ -1202,6 +1204,21 @@ function atualizarTimerVisual() {
         
         if (timerEl) {
           timerEl.innerText = `Tempo restante: ${minutos}m ${segundos}s`;
+        }
+      }
+    }
+    
+    // Timer para pedidos não encontrados
+    if (p.naoEncontradoEm && p.tempoDesapareceNaoEncontrado) {
+      const tempoRestante = p.tempoDesapareceNaoEncontrado - agora;
+      
+      if (tempoRestante > 0) {
+        const minutos = Math.floor(tempoRestante / 60000);
+        const segundos = Math.floor((tempoRestante % 60000) / 1000);
+        const timerEl = document.getElementById(`timer-nao-encontrado-${c}`);
+        
+        if (timerEl) {
+          timerEl.innerText = `⏱️ Desaparece em: ${minutos}m ${segundos}s`;
         }
       }
     }

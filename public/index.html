@@ -616,7 +616,7 @@ function fecharAndar() {
 }
 
 // ===== MODAL NÃO ENCONTRADO =====
-function abrirNaoEncontrado(pedido) {
+window.abrirNaoEncontrado = function(pedido) {
   console.log("Abrindo modal para pedido:", pedido);
   pedidoSelecionadoNeo = pedido;
   document.getElementById("neoPedido").value = pedido;
@@ -635,7 +635,7 @@ function fecharNaoEncontrado() {
   pedidoSelecionadoNeo = null;
 }
 
-async function salvarNaoEncontrado() {
+window.salvarNaoEncontrado = async function() {
   const operador = document.getElementById("neoOperador").value.trim();
   const peca = document.getElementById("neoPeca").value.trim();
   const observacao = document.getElementById("neoObservacao").value.trim();

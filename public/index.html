@@ -508,10 +508,12 @@ scanner.addEventListener("keydown", async (e) => {
     
     if (!pedidos[c]) {
       // 1º bip: começa em "separacao"
+      // Se pedido estava oculto (não encontrado), remover flag oculto para nova separação
       await setDoc(doc(db, "pedidosAtivos", c), {
         status: "separacao",
         iniciou: operadorAtual,
-        separadores: [operadorAtual]
+        separadores: [operadorAtual],
+        oculto: false  // Reaparecerá em amarelo para nova separação
       });
       await addDoc(collection(db, "relatorioPedidos"), {
         pedido: c,
@@ -679,9 +681,9 @@ window.salvarNaoEncontrado = async function() {
       resolvido: false
     });
     
-    // Se estiver em Modo TV: mostrar overlay
+    // Se estiver em Modo TV: mostrar overlay com código da peça
     if (document.body.classList.contains("modo-tv")) {
-      mostrarAlertaNaoEncontrado(pedidoSelecionadoNeo);
+      mostrarAlertaNaoEncontradoTV(pedidoSelecionadoNeo, peca);
     }
     
     // Se estiver em modo normal: deixar card vermelho
@@ -691,6 +693,13 @@ window.salvarNaoEncontrado = async function() {
         cardElement.style.background = "#C0392B";
         cardElement.style.color = "#fff";
         cardElement.style.opacity = "0.6";
+        
+        // Marcar pedido como oculto após 5 minutos (300000ms)
+        setTimeout(async () => {
+          await setDoc(doc(db, "pedidosAtivos", pedidoSelecionadoNeo), {
+            oculto: true
+          }, { merge: true });
+        }, 300000);
       }
     }
     
@@ -702,7 +711,7 @@ window.salvarNaoEncontrado = async function() {
   }
 }
 
-function mostrarAlertaNaoEncontrado(pedido) {
+function mostrarAlertaNaoEncontradoTV(pedido, codigoPeca) {
   const overlay = document.createElement("div");
   overlay.style.cssText = `
     position: fixed;
@@ -729,6 +738,7 @@ function mostrarAlertaNaoEncontrado(pedido) {
   card.innerHTML = `
     <div style="font-size: 48px; font-weight: bold; color: #C0392B; margin-bottom: 20px;">${pedido}</div>
     <div style="font-size: 24px; color: #333; margin-bottom: 20px;">Material não encontrado</div>
+    <div style="font-size: 18px; color: #666; margin-bottom: 10px;">(${codigoPeca})</div>
     <div style="font-size: 18px; color: #666;">Procure seu vendedor!</div>
   `;
   

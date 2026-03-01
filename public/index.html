@@ -618,12 +618,16 @@ function fecharAndar() {
 let pedidoSelecionadoNeo = null;
 
 function abrirNaoEncontrado(pedido) {
+  console.log("Abrindo modal para pedido:", pedido);
   pedidoSelecionadoNeo = pedido;
   document.getElementById("neoPedido").value = pedido;
   document.getElementById("neoOperador").value = "";
   document.getElementById("neoPeca").value = "";
   document.getElementById("neoObservacao").value = "";
-  document.getElementById("modalNaoEncontrado").style.display = "flex";
+  const modal = document.getElementById("modalNaoEncontrado");
+  console.log("Modal encontrado:", modal);
+  modal.style.display = "flex";
+  console.log("Display após mudança:", modal.style.display);
   document.getElementById("neoOperador").focus();
 }
 

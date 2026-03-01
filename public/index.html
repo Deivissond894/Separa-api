@@ -68,10 +68,13 @@ button{border:none;cursor:pointer}
 .card{
   position:relative;
   padding:14px;
-  padding-right:70px;
   border-radius:6px;
   margin-top:12px;
   font-size:14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:15px;
 }
 .separacao{background:#FFD200}
 .confirmado{background:#008000;color:#fff}
@@ -81,42 +84,51 @@ button{border:none;cursor:pointer}
 .info-operador{font-size:13px}
 .status-text{font-weight:bold;margin-top:6px}
 
+/* CONTEÚDO DO CARD */
+.card-content{
+  flex:1;
+}
+
 /* BOTÕES DO CARD */
 .card-buttons{
-  position:absolute;
-  top:6px;
-  right:6px;
   display:flex;
   flex-direction:column;
-  gap:4px;
+  gap:6px;
+  flex-shrink:0;
+}
+
+.btn-delete,
+.btn-alert{
+  width:40px;
+  height:40px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:all 0.2s;
 }
 
 .btn-delete{
-  width:32px;
-  height:32px;
   background:#C0392B;
   color:#fff;
-  border:none;
-  border-radius:4px;
-  cursor:pointer;
-  font-size:16px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+}
+
+.btn-delete:hover{
+  background:#A93226;
+  transform:scale(1.05);
 }
 
 .btn-alert{
-  width:32px;
-  height:32px;
   background:#E67E22;
   color:#fff;
-  border:none;
-  border-radius:4px;
-  cursor:pointer;
-  font-size:16px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+}
+
+.btn-alert:hover{
+  background:#D35400;
+  transform:scale(1.05);
 }
 
 /* BOTÃO TV */
@@ -910,11 +922,10 @@ function render() {
       const d = document.createElement("div");
       d.className = "card " + p.status;
       d.id = `card-${c}`;
-      d.innerHTML = `
-        <div class="card-buttons">
-          <button class="btn-delete" onclick="apagarPedido('${c}')">🗑️</button>
-          <button class="btn-alert" onclick="abrirNaoEncontrado('${c}')">🚨</button>
-        </div>
+      
+      const content = document.createElement("div");
+      content.className = "card-content";
+      content.innerHTML = `
         Pedido: ${c}
         <div class="status-text">Status: ${statusTexto}</div>
         ${p.status === "histórico" ? `<div class="info-operador">Tipo: ${p.tipo === "n1" ? "Térreo" : "1º Andar"}</div>` : ""}
@@ -927,6 +938,16 @@ function render() {
         ` : ""}
         ${p.status === "confirmado" && p.tempoExpiracao ? `<div class="timer" id="timer-${c}"></div>` : ""}
       `;
+      
+      const buttons = document.createElement("div");
+      buttons.className = "card-buttons";
+      buttons.innerHTML = `
+        <button class="btn-delete" onclick="apagarPedido('${c}')" title="Deletar pedido">🗑️</button>
+        <button class="btn-alert" onclick="abrirNaoEncontrado('${c}')" title="Material não encontrado">🚨</button>
+      `;
+      
+      d.appendChild(content);
+      d.appendChild(buttons);
       cards.appendChild(d);
     });
   }

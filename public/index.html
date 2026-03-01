@@ -671,15 +671,26 @@ window.salvarNaoEncontrado = async function() {
   }
   
   try {
+    const agora = Date.now();
+    const tempoDesaparece = agora + (5 * 60 * 1000); // 5 minutos
+    
+    // Salvar documento em pedidosNaoEncontrados
     await addDoc(collection(db, "pedidosNaoEncontrados"), {
       pedido: pedidoSelecionadoNeo,
       codigoPeca: peca,
       operador: operador,
       nomeOperador: usuarios[operador] || "Desconhecido",
       observacao: observacao || "",
-      data: Date.now(),
+      data: agora,
       resolvido: false
     });
+    
+    // Marcar pedido como não encontrado no Firebase (persiste após recarregar)
+    await setDoc(doc(db, "pedidosAtivos", pedidoSelecionadoNeo), {
+      naoEncontradoEm: agora,
+      tempoDesapareceNaoEncontrado: tempoDesaparece,
+      codigoPecaNaoEncontrado: peca
+    }, { merge: true });
     
     // Se estiver em Modo TV: mostrar overlay com código da peça
     if (document.body.classList.contains("modo-tv")) {
@@ -693,14 +704,10 @@ window.salvarNaoEncontrado = async function() {
         cardElement.style.background = "#C0392B";
         cardElement.style.color = "#fff";
         cardElement.style.opacity = "0.6";
-        
-        // Marcar pedido como oculto após 5 minutos (300000ms)
-        setTimeout(async () => {
-          await setDoc(doc(db, "pedidosAtivos", pedidoSelecionadoNeo), {
-            oculto: true
-          }, { merge: true });
-        }, 300000);
       }
+      
+      // Agendar remoção após 5 minutos
+      agendarRemocaoPedidoNaoEncontrado(pedidoSelecionadoNeo, tempoDesaparece, agora);
     }
     
     fecharNaoEncontrado();
@@ -908,6 +915,20 @@ function render() {
     return !p.oculto;
   });
 
+  // ===== AGENDAR TIMERS PARA PEDIDOS NÃO ENCONTRADOS =====
+  pedidosFiltrados.forEach(([c, p]) => {
+    if (p.naoEncontradoEm && p.tempoDesapareceNaoEncontrado) {
+      // Verificar se o pedido já expirou
+      const agora = Date.now();
+      if (agora < p.tempoDesapareceNaoEncontrado) {
+        // Agendar remoção se ainda não está agendado
+        if (!pedidoTimeoutsNaoEncontrado[c]) {
+          agendarRemocaoPedidoNaoEncontrado(c, p.tempoDesapareceNaoEncontrado, p.naoEncontradoEm);
+        }
+      }
+    }
+  });
+
   if (modoTV) {
     const grid = document.createElement("div");
     grid.className = "tv-grid";
@@ -982,6 +1003,17 @@ function render() {
       d.className = "card " + p.status;
       d.id = `card-${c}`;
       
+      // Aplicar estilo de "não encontrado" se aplicável
+      if (p.naoEncontradoEm && p.tempoDesapareceNaoEncontrado) {
+        const agora = Date.now();
+        if (agora < p.tempoDesapareceNaoEncontrado) {
+          d.style.background = "#C0392B";
+          d.style.color = "#fff";
+          d.style.opacity = "0.6";
+          d.style.borderLeft = "4px solid #A93226";
+        }
+      }
+      
       // Header com número do pedido
       const header = document.createElement("div");
       header.className = "card-header";
@@ -1025,6 +1057,54 @@ window.render = render;
 // ===== AGENDAR REMOÇÃO DE PEDIDOS EXPIRADOS =====
 // Mapear para rastrear timeouts ativos
 const pedidoTimeouts = {};
+const pedidoTimeoutsNaoEncontrado = {};
+
+function agendarRemocaoPedidoNaoEncontrado(codigo, tempoDesaparece, agoraServidor = null) {
+  // Se já existe um timeout para este pedido, cancela
+  if (pedidoTimeoutsNaoEncontrado[codigo]) {
+    clearTimeout(pedidoTimeoutsNaoEncontrado[codigo]);
+  }
+  
+  // Usar timestamp do servidor como referência
+  const agoraCliente = Date.now();
+  const agoraRef = agoraServidor !== null ? agoraServidor : agoraCliente;
+  
+  // Calcular o tempo até desaparecimento
+  let tempoAteDesaparece = tempoDesaparece - agoraRef;
+  
+  if (Math.abs(tempoAteDesaparece - (tempoDesaparece - agoraCliente)) > 5000) {
+    tempoAteDesaparece = tempoDesaparece - agoraCliente;
+    console.warn(`Offset de fuso horário detectado. Usando timestamp do cliente.`);
+  }
+  
+  if (tempoAteDesaparece <= 0) {
+    // Já expirou, remove imediatamente
+    removerPedidoNaoEncontrado(codigo);
+    return;
+  }
+  
+  // Agendar remoção
+  pedidoTimeoutsNaoEncontrado[codigo] = setTimeout(() => {
+    removerPedidoNaoEncontrado(codigo);
+  }, tempoAteDesaparece);
+  
+  console.log(`Agendada remoção de ${codigo} em ${tempoAteDesaparece}ms`);
+}
+
+async function removerPedidoNaoEncontrado(codigo) {
+  console.log(`Removendo pedido não encontrado: ${codigo}`);
+  
+  // Marcar como oculto no Firebase
+  await setDoc(doc(db, "pedidosAtivos", codigo), {
+    oculto: true
+  }, { merge: true });
+  
+  // Limpar timeout
+  if (pedidoTimeoutsNaoEncontrado[codigo]) {
+    clearTimeout(pedidoTimeoutsNaoEncontrado[codigo]);
+    delete pedidoTimeoutsNaoEncontrado[codigo];
+  }
+}
 
 function agendarRemocaoPedido(codigo, tempoExpiracao, agoraServidor = null) {
   // Se já existe um timeout para este pedido, cancela

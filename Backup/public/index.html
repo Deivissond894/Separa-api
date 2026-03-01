@@ -72,8 +72,53 @@ button{border:none;cursor:pointer}
   margin-top:12px;
   font-size:14px;
 }
-.separacao{background:#FFD200}
-.confirmado{background:#008000;color:#fff}
+.separacao{
+  background:#FFD200;
+  overflow:visible;
+}
+.separacao::before{
+  content:'';
+  position:absolute;
+  top:-50px;
+  right:-60px;
+  width:120px;
+  height:100px;
+  background-image:url('mascara_carnaval.png');
+  background-size:contain;
+  background-repeat:no-repeat;
+  transform:rotate(29deg);
+  opacity:1;
+  pointer-events:none;
+  z-index:10;
+  display:none;
+}
+body.modo-tv .separacao::before{
+  display:block;
+}
+.confirmado{
+  background:#008000;
+  color:#fff;
+  overflow:visible;
+}
+.confirmado::before{
+  content:'';
+  position:absolute;
+  bottom:-70px;
+  left:-80px;
+  width:160px;
+  height:140px;
+  background-image:url('Carnaval.png');
+  background-size:contain;
+  background-repeat:no-repeat;
+  transform:rotate(29deg);
+  opacity:1;
+  pointer-events:none;
+  z-index:10;
+  display:none;
+}
+body.modo-tv .confirmado::before{
+  display:block;
+}
 .histórico{background:#A9A9A9;color:#fff}
 
 .timer{margin-top:6px;font-weight:bold}
@@ -117,7 +162,10 @@ body.modo-tv .container > *:not(.cards),
 body.modo-tv .info-operador,
 body.modo-tv .btn-lixeira,
 body.modo-tv .operadores-ref,
-body.modo-tv .pesquisa-wrap{display:none}
+body.modo-tv .pesquisa-wrap,
+body.modo-tv .timer,
+body.modo-tv .status-text,
+body.modo-tv .pedido-label{display:none}
 
 body.modo-tv .container{
   max-width:100%;
@@ -142,15 +190,27 @@ body.modo-tv .container{
   background:rgba(255,255,255,0.1);
   border-radius:8px;
 }
-body.modo-tv .card{
-  padding:1.5vh 2vh;
-  margin-top:1vh;
-  border-radius:10px;
-  font-size:1.6vw;
-  line-height:1.3;
+.tv-title.separacao-title{
+  background:#FFD200;
+  color:#000;
 }
-body.modo-tv .timer{font-size:1.4vw;margin-top:4px}
-body.modo-tv .status-text{font-size:1.5vw;margin-top:4px}
+.tv-title.confirmado-title{
+  background:#008000;
+  color:#fff;
+}
+body.modo-tv .card{
+  padding:2.5vh 3vh;
+  margin-top:1.5vh;
+  border-radius:10px;
+  font-size:4vw;
+  line-height:1;
+  text-align:center;
+  font-weight:bold;
+  min-height:10vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
 
 /* MODAIS */
 .modal{
@@ -864,11 +924,11 @@ function render() {
     // Headers que ocupam 2 colunas cada
     const headerSep = document.createElement("div");
     headerSep.className = "tv-header";
-    headerSep.innerHTML = `<div class="tv-title">Pedidos em Separação</div>`;
+    headerSep.innerHTML = `<div class="tv-title separacao-title">Pedidos em Separação</div>`;
 
     const headerConf = document.createElement("div");
     headerConf.className = "tv-header";
-    headerConf.innerHTML = `<div class="tv-title">Pedidos Confirmados</div>`;
+    headerConf.innerHTML = `<div class="tv-title confirmado-title">Pedidos Confirmados</div>`;
 
     // 4 colunas de conteúdo
     const colSep1 = document.createElement("div");
@@ -892,7 +952,7 @@ function render() {
       d.className = "card " + p.status;
       d.id = `card-${c}`;
       d.innerHTML = `
-        Pedido: ${c}
+        <span class="pedido-label">Pedido: </span>${c}
         <div class="status-text">Status: ${statusTexto}</div>
         ${p.status === "histórico" ? `<div class="info-operador">Tipo: ${p.tipo === "n1" ? "Térreo" : "1º Andar"}</div>` : ""}
         ${p.status === "histórico" ? `<div class="info-operador">Operador: ${p.operador}</div>` : ""}

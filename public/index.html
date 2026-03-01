@@ -506,6 +506,26 @@ scanner.addEventListener("keydown", async (e) => {
     playSound();
     const agora = Date.now();
     
+    // Se o pedido estava em "não encontrado", cancela o timer e volta para amarelo
+    if (pedidos[c] && pedidos[c].naoEncontradoEm && pedidos[c].tempoDesapareceNaoEncontrado) {
+      console.log(`Pedido ${c} estava não encontrado, voltando para separação...`);
+      
+      // Cancelar timer de não encontrado
+      if (pedidoTimeoutsNaoEncontrado[c]) {
+        clearTimeout(pedidoTimeoutsNaoEncontrado[c]);
+        delete pedidoTimeoutsNaoEncontrado[c];
+      }
+      
+      // Limpar os campos de não encontrado no Firebase
+      await setDoc(doc(db, "pedidosAtivos", c), {
+        naoEncontradoEm: null,
+        tempoDesapareceNaoEncontrado: null,
+        codigoPecaNaoEncontrado: null,
+        status: "separacao",
+        oculto: false
+      }, { merge: true });
+    }
+    
     if (!pedidos[c]) {
       // 1º bip: começa em "separacao"
       // Se pedido estava oculto (não encontrado), remover flag oculto para nova separação

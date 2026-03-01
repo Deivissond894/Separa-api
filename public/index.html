@@ -691,8 +691,11 @@ window.salvarNaoEncontrado = async function() {
   }
   
   try {
-    const agora = Date.now();
-    const tempoDesaparece = agora + (5 * 60 * 1000); // 5 minutos
+    // Pegar timestamp do servidor como referência
+    const serverResponse = await fetch(`${API_URL}/api/timestamp`);
+    const { agora } = await serverResponse.json();
+    
+    const tempoDesaparece = agora + (5 * 60 * 1000); // 5 minutos a partir do servidor
     
     // Salvar documento em pedidosNaoEncontrados
     await addDoc(collection(db, "pedidosNaoEncontrados"), {
@@ -712,12 +715,12 @@ window.salvarNaoEncontrado = async function() {
       codigoPecaNaoEncontrado: peca
     }, { merge: true });
     
-    // Agendar remoção após 5 minutos (em qualquer modo)
+    // Agendar remoção após 5 minutos usando timestamp do servidor
     agendarRemocaoPedidoNaoEncontrado(pedidoSelecionadoNeo, tempoDesaparece, agora);
     
-    // Se estiver em Modo TV: mostrar overlay com código da peça
+    // Se estiver em Modo TV: mostrar overlay com código da peça (10 segundos do servidor)
     if (document.body.classList.contains("modo-tv")) {
-      mostrarAlertaNaoEncontradoTV(pedidoSelecionadoNeo, peca);
+      mostrarAlertaNaoEncontradoTV(pedidoSelecionadoNeo, peca, agora, tempoDesaparece);
     }
     
     // Se estiver em modo normal: deixar card vermelho
@@ -738,7 +741,7 @@ window.salvarNaoEncontrado = async function() {
   }
 }
 
-function mostrarAlertaNaoEncontradoTV(pedido, codigoPeca) {
+function mostrarAlertaNaoEncontradoTV(pedido, codigoPeca, tempoInicio, tempoFim) {
   const overlay = document.createElement("div");
   overlay.style.cssText = `
     position: fixed;

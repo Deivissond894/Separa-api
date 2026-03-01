@@ -29,6 +29,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ===== TIMESTAMP DO SERVIDOR =====
+app.get('/api/timestamp', (req, res) => {
+  res.json({ agora: Date.now() });
+});
+
 // ===== PEDIDOS ATIVOS =====
 app.get('/api/pedidos', async (req, res) => {
   try {

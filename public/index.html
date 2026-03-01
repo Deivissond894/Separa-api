@@ -370,7 +370,6 @@ onSnapshot(collection(db, "pedidosAtivos"), (snapshot) => {
   snapshot.forEach(doc => {
     pedidos[doc.id] = doc.data();
   });
-  playSound();
   render();
 });
 
@@ -1133,10 +1132,17 @@ window.renderRanked = function(){
 }
 
 // ===== EFEITO SONORO =====
+let lastSoundTime = 0;
+const soundDebounce = 300; // 300ms de intervalo mínimo entre sons
+
 const audioSound = new Audio('recording-20260301-111943_rYCiiIkl.mp3');
 function playSound() {
-  audioSound.currentTime = 0;
-  audioSound.play().catch(err => console.log("Áudio não pode ser reproduzido:", err));
+  const now = Date.now();
+  if (now - lastSoundTime >= soundDebounce) {
+    lastSoundTime = now;
+    audioSound.currentTime = 0;
+    audioSound.play().catch(err => console.log("Áudio não pode ser reproduzido:", err));
+  }
 }
 </script>
 

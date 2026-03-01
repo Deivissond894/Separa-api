@@ -389,7 +389,7 @@ body.modo-tv .status-text{display:none}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, onSnapshot, doc, setDoc, deleteDoc, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, onSnapshot, doc, setDoc, deleteDoc, addDoc, query, orderBy, limit, startAfter, getCountFromServer } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 // Firebase config
 const firebaseConfig = {
@@ -426,6 +426,9 @@ let historicoRanked = [];
 // ===== PAGINAÇÃO DO RELATÓRIO =====
 let paginaAtualRelatorio = 1;
 const ITENS_POR_PAGINA = 10;
+let ultimoDocRelatorio = null;
+let totalRegistrosRelatorio = 0;
+let pedidosCacheRelatorio = [];
 
 let operadorAtual = null;
 let operador2 = null;
@@ -453,11 +456,9 @@ onSnapshot(collection(db, "pedidosAtivos"), (snapshot) => {
   render();
 });
 
-onSnapshot(query(collection(db, "relatorioPedidos"), orderBy("data", "desc")), (snapshot) => {
-  relatorio = [];
-  snapshot.forEach(doc => {
-    relatorio.push(doc.data());
-  });
+// Contar total de registros
+getCountFromServer(collection(db, "relatorioPedidos")).then(snapshot => {
+  totalRegistrosRelatorio = snapshot.data().count;
 });
 
 // ===== LISTENERS RANKING =====
@@ -491,7 +492,7 @@ onSnapshot(collection(db, "historicoRanking"), (snapshot) => {
 // PESQUISAS
 campoPesquisa.addEventListener("input", render);
 campoPesquisaHistorico.addEventListener("input", () => {
-  paginaAtualRelatorio = 1; // Reset para página 1 ao filtrar
+  paginaAtualRelatorio = 1;
   renderHistorico();
 });
 
@@ -1290,7 +1291,8 @@ setInterval(() => {
 // ===== HISTÓRICO =====
 function abrirHistorico() {
   if (prompt("Senha:") !== SENHA) return;
-  paginaAtualRelatorio = 1; // Reset para página 1
+  paginaAtualRelatorio = 1;
+  ultimoDocRelatorio = null;
   document.getElementById("modalHistorico").style.display = "flex";
   renderHistorico();
 }
@@ -1306,165 +1308,130 @@ function limparRelatorio() {
     }).then(() => renderHistorico());
   }
 }
-function renderHistorico() {
+async function renderHistorico() {
   const l = document.getElementById("listaHistorico");
   const filtro = campoPesquisaHistorico.value.trim().toLowerCase();
-  l.innerHTML = "";
+  l.innerHTML = "<p>Carregando...</p>";
 
-  const mapa = {};
-
-  relatorio.forEach(r => {
-    if (!mapa[r.pedido]) mapa[r.pedido] = { eventos: [] };
-
-    if (r.tipo === "n1") {
-      mapa[r.pedido].eventos.push(r);
+  try {
+    let q;
+    
+    if (filtro) {
+      // Com filtro: buscar todos e filtrar no cliente
+      const snapshot = await getDocs(query(collection(db, "relatorioPedidos"), orderBy("data", "desc")));
+      const dados = [];
+      snapshot.forEach(doc => {
+        dados.push({ id: doc.id, ...doc.data() });
+      });
+      pedidosCacheRelatorio = dados;
+    } else {
+      // Sem filtro: buscar apenas 10 por página
+      if (paginaAtualRelatorio === 1) {
+        q = query(collection(db, "relatorioPedidos"), orderBy("data", "desc"), limit(ITENS_POR_PAGINA));
+      } else {
+        q = query(collection(db, "relatorioPedidos"), orderBy("data", "desc"), startAfter(ultimoDocRelatorio), limit(ITENS_POR_PAGINA));
+      }
+      const snapshot = await getDocs(q);
+      pedidosCacheRelatorio = [];
+      snapshot.forEach((doc, index) => {
+        pedidosCacheRelatorio.push({ id: doc.id, ...doc.data() });
+        if (index === snapshot.docs.length - 1) {
+          ultimoDocRelatorio = doc;
+        }
+      });
     }
 
-    if (r.tipo === "n2") {
-      mapa[r.pedido].andar2 = r;
-    }
-  });
-
-  // Filtrar pedidos
-  const pedidosFiltrados = Object.keys(mapa)
-    .filter(p => {
-      const item = mapa[p];
-      return item.eventos.length >= 2 && (!filtro || p.toLowerCase().includes(filtro));
+    // Processar dados
+    const mapa = {};
+    pedidosCacheRelatorio.forEach(r => {
+      if (!mapa[r.pedido]) mapa[r.pedido] = { eventos: [] };
+      if (r.tipo === "n1") {
+        mapa[r.pedido].eventos.push(r);
+      }
+      if (r.tipo === "n2") {
+        mapa[r.pedido].andar2 = r;
+      }
     });
 
-  const totalPedidos = pedidosFiltrados.length;
-  const totalPaginas = Math.ceil(totalPedidos / ITENS_POR_PAGINA);
+    let pedidosFiltrados = Object.keys(mapa)
+      .filter(p => {
+        const item = mapa[p];
+        return item.eventos.length >= 2 && (!filtro || p.toLowerCase().includes(filtro));
+      });
 
-  // Reset página se filtro mudar
-  if (paginaAtualRelatorio > totalPaginas && totalPaginas > 0) {
-    paginaAtualRelatorio = totalPaginas;
-  } else if (totalPaginas === 0) {
-    paginaAtualRelatorio = 1;
+    const totalPedidos = filtro ? pedidosFiltrados.length : totalRegistrosRelatorio;
+    const totalPaginas = Math.ceil(totalPedidos / ITENS_POR_PAGINA);
+
+    l.innerHTML = "";
+
+    if (filtro) {
+      const inicio = (paginaAtualRelatorio - 1) * ITENS_POR_PAGINA;
+      const fim = inicio + ITENS_POR_PAGINA;
+      pedidosFiltrados = pedidosFiltrados.slice(inicio, fim);
+    }
+
+    if (pedidosFiltrados.length === 0) {
+      l.innerHTML = "<p style='text-align: center; color: #999;'>Nenhum pedido encontrado</p>";
+    } else {
+      pedidosFiltrados.forEach(pedido => {
+        const d = document.createElement("div");
+        d.className = "historico-card";
+        const eventos = mapa[pedido].eventos;
+        const n2 = mapa[pedido].andar2;
+        const primeiroEvento = eventos[0];
+        const segundoEvento = eventos[1];
+        const separadores = eventos.map(e => e.operador).filter((v, i, a) => a.indexOf(v) === i);
+
+        d.innerHTML = `
+          Pedido: ${pedido}<br><br>
+          ${primeiroEvento ? `Primeira Separação: ${primeiroEvento.operador}<br>${new Date(primeiroEvento.data).toLocaleDateString()} ${new Date(primeiroEvento.data).toLocaleTimeString()}<br><br>` : ""}
+          ${segundoEvento ? `Confirmado por: ${segundoEvento.operador}<br>${new Date(segundoEvento.data).toLocaleDateString()} ${new Date(segundoEvento.data).toLocaleTimeString()}<br><br>` : ""}
+          Separadores envolvidos: ${separadores.join(", ") || "N/A"}<br><br>
+          ${n2 ? `1º Andar: ${n2.operador}<br>${new Date(n2.data).toLocaleDateString()} ${new Date(n2.data).toLocaleTimeString()}` : "Sem participação do 1º andar"}
+        `;
+        l.appendChild(d);
+      });
+    }
+
+    // Paginação
+    const paginacaoDiv = document.createElement("div");
+    paginacaoDiv.style.cssText = `margin-top: 20px; padding-top: 20px; border-top: 1px solid #ccc; display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;`;
+
+    const btnAnterior = document.createElement("button");
+    btnAnterior.textContent = "← Anterior";
+    btnAnterior.disabled = paginaAtualRelatorio === 1;
+    btnAnterior.style.cssText = `padding: 8px 12px; background: ${paginaAtualRelatorio === 1 ? "#ccc" : "#1F4E8C"}; color: #fff; border: none; border-radius: 4px; cursor: ${paginaAtualRelatorio === 1 ? "not-allowed" : "pointer"}; font-weight: bold;`;
+    btnAnterior.onclick = async () => {
+      if (paginaAtualRelatorio > 1) {
+        paginaAtualRelatorio--;
+        ultimoDocRelatorio = null;
+        await renderHistorico();
+      }
+    };
+
+    const infoDiv = document.createElement("span");
+    infoDiv.style.cssText = `font-weight: bold; color: #333; padding: 0 10px;`;
+    infoDiv.textContent = `Página ${totalPaginas > 0 ? paginaAtualRelatorio : 0} de ${totalPaginas}`;
+
+    const btnProximo = document.createElement("button");
+    btnProximo.textContent = "Próximo →";
+    btnProximo.disabled = paginaAtualRelatorio >= totalPaginas || totalPaginas === 0;
+    btnProximo.style.cssText = `padding: 8px 12px; background: ${paginaAtualRelatorio >= totalPaginas ? "#ccc" : "#0B2E5F"}; color: #fff; border: none; border-radius: 4px; cursor: ${paginaAtualRelatorio >= totalPaginas ? "not-allowed" : "pointer"}; font-weight: bold;`;
+    btnProximo.onclick = async () => {
+      if (paginaAtualRelatorio < totalPaginas) {
+        paginaAtualRelatorio++;
+        await renderHistorico();
+      }
+    };
+
+    paginacaoDiv.appendChild(btnAnterior);
+    paginacaoDiv.appendChild(infoDiv);
+    paginacaoDiv.appendChild(btnProximo);
+    l.appendChild(paginacaoDiv);
+  } catch (err) {
+    console.error("Erro ao carregar relatório:", err);
+    l.innerHTML = "<p style='color: red;'>Erro ao carregar relatório</p>";
   }
-
-  // Calcular índices de início e fim
-  const inicio = (paginaAtualRelatorio - 1) * ITENS_POR_PAGINA;
-  const fim = inicio + ITENS_POR_PAGINA;
-
-  // Renderizar cards da página atual
-  pedidosFiltrados.slice(inicio, fim).forEach(pedido => {
-    const d = document.createElement("div");
-    d.className = "historico-card";
-
-    const eventos = mapa[pedido].eventos;
-    const n2 = mapa[pedido].andar2;
-    
-    // Pega o primeiro evento (quando entrou em separação)
-    const primeiroEvento = eventos[0];
-    // Pega o segundo evento (quando foi confirmado)
-    const segundoEvento = eventos[1];
-    
-    // Pega a lista de separadores do pedido (array de todos que tocaram)
-    const separadores = eventos.map(e => e.operador).filter((v, i, a) => a.indexOf(v) === i);
-
-    d.innerHTML = `
-      Pedido: ${pedido}<br><br>
-
-      ${primeiroEvento ? `
-      Primeira Separação: ${primeiroEvento.operador}<br>
-      ${new Date(primeiroEvento.data).toLocaleDateString()} 
-      ${new Date(primeiroEvento.data).toLocaleTimeString()}<br><br>
-      ` : ""}
-
-      ${segundoEvento ? `
-      Confirmado por: ${segundoEvento.operador}<br>
-      ${new Date(segundoEvento.data).toLocaleDateString()} 
-      ${new Date(segundoEvento.data).toLocaleTimeString()}<br><br>
-      ` : ""}
-
-      Separadores envolvidos: ${separadores.join(", ") || "N/A"}<br><br>
-
-      ${n2 ? `
-      1º Andar: ${n2.operador}<br>
-      ${new Date(n2.data).toLocaleDateString()} 
-      ${new Date(n2.data).toLocaleTimeString()}
-      ` : "Sem participação do 1º andar"}
-    `;
-
-    l.appendChild(d);
-  });
-
-  // Renderizar paginação
-  const paginacaoDiv = document.createElement("div");
-  paginacaoDiv.style.cssText = `
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid #ccc;
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: wrap;
-  `;
-
-  // Botão anterior
-  const btnAnterior = document.createElement("button");
-  btnAnterior.textContent = "← Anterior";
-  btnAnterior.disabled = paginaAtualRelatorio === 1;
-  btnAnterior.style.cssText = `
-    padding: 8px 12px;
-    background: ${paginaAtualRelatorio === 1 ? "#ccc" : "#1F4E8C"};
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    cursor: ${paginaAtualRelatorio === 1 ? "not-allowed" : "pointer"};
-    font-weight: bold;
-  `;
-  btnAnterior.onclick = () => {
-    if (paginaAtualRelatorio > 1) {
-      paginaAtualRelatorio--;
-      renderHistorico();
-    }
-  };
-
-  // Informação da página
-  const infoDiv = document.createElement("span");
-  infoDiv.style.cssText = `
-    font-weight: bold;
-    color: #333;
-    padding: 0 10px;
-  `;
-  infoDiv.textContent = `Página ${totalPaginas > 0 ? paginaAtualRelatorio : 0} de ${totalPaginas}`;
-
-  // Botão próximo
-  const btnProximo = document.createElement("button");
-  btnProximo.textContent = "Próximo →";
-  btnProximo.disabled = paginaAtualRelatorio >= totalPaginas;
-  btnProximo.style.cssText = `
-    padding: 8px 12px;
-    background: ${paginaAtualRelatorio >= totalPaginas ? "#ccc" : "#0B2E5F"};
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    cursor: ${paginaAtualRelatorio >= totalPaginas ? "not-allowed" : "pointer"};
-    font-weight: bold;
-  `;
-  btnProximo.onclick = () => {
-    if (paginaAtualRelatorio < totalPaginas) {
-      paginaAtualRelatorio++;
-      renderHistorico();
-    }
-  };
-
-  // Informação de resultados
-  const infoResultados = document.createElement("span");
-  infoResultados.style.cssText = `
-    color: #666;
-    font-size: 12px;
-  `;
-  infoResultados.textContent = `Exibindo ${Math.min(fim, totalPedidos)} de ${totalPedidos} pedidos`;
-
-  paginacaoDiv.appendChild(btnAnterior);
-  paginacaoDiv.appendChild(infoDiv);
-  paginacaoDiv.appendChild(btnProximo);
-  paginacaoDiv.appendChild(infoResultados);
-
-  l.appendChild(paginacaoDiv);
 }
 
 // Expor renderHistorico globalmente

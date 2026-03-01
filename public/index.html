@@ -414,6 +414,7 @@ let historicoRanked = [];
 
 let operadorAtual = null;
 let operador2 = null;
+let pedidoSelecionadoNeo = null;
 
 const usuario = document.getElementById("usuario");
 const scanner = document.getElementById("scanner");
@@ -615,8 +616,6 @@ function fecharAndar() {
 }
 
 // ===== MODAL NÃO ENCONTRADO =====
-let pedidoSelecionadoNeo = null;
-
 function abrirNaoEncontrado(pedido) {
   console.log("Abrindo modal para pedido:", pedido);
   pedidoSelecionadoNeo = pedido;

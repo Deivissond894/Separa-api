@@ -679,12 +679,24 @@ window.salvarNaoEncontrado = async function() {
       resolvido: false
     });
     
-    // Mostrar alerta no Modo TV
-    if (document.body.classList.contains("modo-tv")) {
-      mostrarAlertaNaoEncontrado(pedidoSelecionadoNeo);
+    // Marcar o pedido como não encontrado
+    const cardElement = document.getElementById(`card-${pedidoSelecionadoNeo}`);
+    if (cardElement) {
+      cardElement.style.opacity = "0.4";
+      cardElement.style.background = "#C0392B";
+      cardElement.style.color = "#fff";
     }
     
+    // Mostrar alerta
+    mostrarAlertaNaoEncontrado(pedidoSelecionadoNeo);
+    
     fecharNaoEncontrado();
+    
+    // Recarregar após 5 segundos para refletir mudanças
+    setTimeout(() => {
+      render();
+    }, 5000);
+    
   } catch (err) {
     console.error("Erro ao salvar:", err);
     alert("Erro ao salvar!");

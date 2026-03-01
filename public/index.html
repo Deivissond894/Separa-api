@@ -1351,18 +1351,12 @@ async function carregarRelatorio() {
     
     filtrosPaginaAtual = { numero: numPedido, dataInicial, dataFinal };
     
-    let q;
-    if (paginaRelatorio === 1) {
-      q = query(collection(db, "relatorioPedidos"), orderBy("data", "desc"), limit(ITENS_POR_PAGINA_REL));
-    } else {
-      q = query(collection(db, "relatorioPedidos"), orderBy("data", "desc"), startAfter(ultimoDocRelatorio), limit(ITENS_POR_PAGINA_REL));
-    }
-    
+    // Sempre buscar todos os dados se tiver filtro ativo
+    let q = query(collection(db, "relatorioPedidos"), orderBy("data", "desc"));
     const snapshot = await getDocs(q);
     const todosDados = [];
-    snapshot.forEach((doc, index) => {
+    snapshot.forEach(doc => {
       todosDados.push({ id: doc.id, ...doc.data() });
-      if (index === snapshot.docs.length - 1) ultimoDocRelatorio = doc;
     });
     
     // Agrupar por pedido
@@ -1409,10 +1403,15 @@ async function carregarRelatorio() {
     
     listaDiv.innerHTML = "";
     
-    if (pedidosProcessados.length === 0) {
+    // Aplicar paginação no resultado
+    const inicio = (paginaRelatorio - 1) * ITENS_POR_PAGINA_REL;
+    const fim = inicio + ITENS_POR_PAGINA_REL;
+    const pedidosPaginados = pedidosProcessados.slice(inicio, fim);
+    
+    if (pedidosPaginados.length === 0) {
       listaDiv.innerHTML = "<p style='text-align: center; color: #999; padding: 20px;'>Nenhum pedido encontrado</p>";
     } else {
-      pedidosProcessados.forEach(pedido => {
+      pedidosPaginados.forEach(pedido => {
         const card = document.createElement("div");
         card.className = "historico-card";
         

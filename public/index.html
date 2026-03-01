@@ -167,6 +167,12 @@ button{border:none;cursor:pointer}
   100% { background-position: 0% 50%; }
 }
 
+@keyframes pulse {
+  0% { transform: scale(0.9); opacity: 0; }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 .animated-gradient-bg {
   width: 100%;
   height: 100vh;
@@ -318,6 +324,10 @@ body.modo-tv .status-text{display:none}
 
 <div class="btn-tv" onclick="toggleTV()">📺</div>
 
+<div id="btn-test-overlay" style="display:none;position:fixed;bottom:20px;left:20px;background:#0B2E5F;color:#fff;padding:12px 20px;border-radius:6px;cursor:pointer;font-weight:bold;z-index:2000;" onclick="testarOverlayTV()">
+  🧪 Testar Overlay
+</div>
+
 <!-- MODAL PRIMEIRO ANDAR -->
 <div class="modal" id="modalAndar">
   <div class="modal-content">
@@ -413,6 +423,10 @@ let relatorio = [];
 let ranked = { n1: {}, n2: {} };
 let historicoRanked = [];
 
+// ===== PAGINAÇÃO DO RELATÓRIO =====
+let paginaAtualRelatorio = 1;
+const ITENS_POR_PAGINA = 10;
+
 let operadorAtual = null;
 let operador2 = null;
 let pedidoSelecionadoNeo = null;
@@ -476,7 +490,10 @@ onSnapshot(collection(db, "historicoRanking"), (snapshot) => {
 
 // PESQUISAS
 campoPesquisa.addEventListener("input", render);
-campoPesquisaHistorico.addEventListener("input", renderHistorico);
+campoPesquisaHistorico.addEventListener("input", () => {
+  paginaAtualRelatorio = 1; // Reset para página 1 ao filtrar
+  renderHistorico();
+});
 
 // ===== FOCO AUTOMÁTICO =====
 // Focar no campo de usuário ao carregar a página
@@ -741,45 +758,66 @@ window.salvarNaoEncontrado = async function() {
   }
 }
 
+
 function mostrarAlertaNaoEncontradoTV(pedido, codigoPeca, tempoInicio, tempoFim) {
+  console.log("🔴 INICIANDO OVERLAY PARA:", pedido, codigoPeca);
+  
   const overlay = document.createElement("div");
+  overlay.id = "overlay-nao-encontrado-tv";
   overlay.style.cssText = `
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(128, 128, 128, 0.9);
+    background: rgba(0, 0, 0, 0.95);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 99999;
+    z-index: 999999 !important;
+    opacity: 1;
+    transition: opacity 0.5s ease-out;
   `;
   
   const card = document.createElement("div");
   card.style.cssText = `
-    background: #000;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
     padding: 60px 80px;
     border-radius: 12px;
     text-align: center;
     max-width: 900px;
+    border: 4px solid #C0392B;
+    box-shadow: 0 0 60px rgba(192, 57, 43, 0.8);
+    animation: pulse 0.5s ease-out;
   `;
   
   card.innerHTML = `
-    <div style="font-size: 42px; color: #fff; margin-bottom: 40px; font-weight: bold;">Material (${codigoPeca}) não encontrado</div>
-    <div style="font-size: 120px; font-weight: bold; color: #C0392B;">PEDIDO ${pedido}</div>
+    <div style="font-size: 42px; color: #fff; margin-bottom: 40px; font-weight: bold;">⚠️ Material (${codigoPeca}) não encontrado</div>
+    <div style="font-size: 120px; font-weight: bold; color: #C0392B; text-shadow: 0 0 20px rgba(192, 57, 43, 0.5);">PEDIDO ${pedido}</div>
+    <div style="font-size: 28px; color: #ff6b6b; margin-top: 40px; font-weight: bold;">⏱️ Disappearing in 5 minutes</div>
   `;
   
   overlay.appendChild(card);
   document.body.appendChild(overlay);
   
+  console.log("✅✅✅ OVERLAY CRIADO E INSERIDO NO DOM");
+  console.log("Display:", overlay.style.display);
+  console.log("Z-Index:", overlay.style.zIndex);
+  console.log("Elemento no DOM:", document.getElementById("overlay-nao-encontrado-tv"));
+  
   // Remover após 10 segundos
   setTimeout(() => {
+    console.log("⏱️ Iniciando desaparecimento do overlay");
     overlay.style.opacity = "0";
-    overlay.style.transition = "opacity 0.5s ease-out";
-    setTimeout(() => overlay.remove(), 500);
+    setTimeout(() => {
+      overlay.remove();
+      console.log("✅ Overlay removido do DOM");
+    }, 500);
   }, 10000);
 }
+
+// Expor globalmente
+window.mostrarAlertaNaoEncontradoTV = mostrarAlertaNaoEncontradoTV;
 
 usuario2.addEventListener("input", () => {
   const nome = usuarios[usuario2.value];
@@ -1252,6 +1290,7 @@ setInterval(() => {
 // ===== HISTÓRICO =====
 function abrirHistorico() {
   if (prompt("Senha:") !== SENHA) return;
+  paginaAtualRelatorio = 1; // Reset para página 1
   document.getElementById("modalHistorico").style.display = "flex";
   renderHistorico();
 }
@@ -1286,52 +1325,146 @@ function renderHistorico() {
     }
   });
 
-  Object.keys(mapa)
+  // Filtrar pedidos
+  const pedidosFiltrados = Object.keys(mapa)
     .filter(p => {
       const item = mapa[p];
       return item.eventos.length >= 2 && (!filtro || p.toLowerCase().includes(filtro));
-    })
-    .forEach(pedido => {
-      const d = document.createElement("div");
-      d.className = "historico-card";
-
-      const eventos = mapa[pedido].eventos;
-      const n2 = mapa[pedido].andar2;
-      
-      // Pega o primeiro evento (quando entrou em separação)
-      const primeiroEvento = eventos[0];
-      // Pega o segundo evento (quando foi confirmado)
-      const segundoEvento = eventos[1];
-      
-      // Pega a lista de separadores do pedido (array de todos que tocaram)
-      const separadores = eventos.map(e => e.operador).filter((v, i, a) => a.indexOf(v) === i);
-
-      d.innerHTML = `
-        Pedido: ${pedido}<br><br>
-
-        ${primeiroEvento ? `
-        Primeira Separação: ${primeiroEvento.operador}<br>
-        ${new Date(primeiroEvento.data).toLocaleDateString()} 
-        ${new Date(primeiroEvento.data).toLocaleTimeString()}<br><br>
-        ` : ""}
-
-        ${segundoEvento ? `
-        Confirmado por: ${segundoEvento.operador}<br>
-        ${new Date(segundoEvento.data).toLocaleDateString()} 
-        ${new Date(segundoEvento.data).toLocaleTimeString()}<br><br>
-        ` : ""}
-
-        Separadores envolvidos: ${separadores.join(", ") || "N/A"}<br><br>
-
-        ${n2 ? `
-        1º Andar: ${n2.operador}<br>
-        ${new Date(n2.data).toLocaleDateString()} 
-        ${new Date(n2.data).toLocaleTimeString()}
-        ` : "Sem participação do 1º andar"}
-      `;
-
-      l.appendChild(d);
     });
+
+  const totalPedidos = pedidosFiltrados.length;
+  const totalPaginas = Math.ceil(totalPedidos / ITENS_POR_PAGINA);
+
+  // Reset página se filtro mudar
+  if (paginaAtualRelatorio > totalPaginas && totalPaginas > 0) {
+    paginaAtualRelatorio = totalPaginas;
+  } else if (totalPaginas === 0) {
+    paginaAtualRelatorio = 1;
+  }
+
+  // Calcular índices de início e fim
+  const inicio = (paginaAtualRelatorio - 1) * ITENS_POR_PAGINA;
+  const fim = inicio + ITENS_POR_PAGINA;
+
+  // Renderizar cards da página atual
+  pedidosFiltrados.slice(inicio, fim).forEach(pedido => {
+    const d = document.createElement("div");
+    d.className = "historico-card";
+
+    const eventos = mapa[pedido].eventos;
+    const n2 = mapa[pedido].andar2;
+    
+    // Pega o primeiro evento (quando entrou em separação)
+    const primeiroEvento = eventos[0];
+    // Pega o segundo evento (quando foi confirmado)
+    const segundoEvento = eventos[1];
+    
+    // Pega a lista de separadores do pedido (array de todos que tocaram)
+    const separadores = eventos.map(e => e.operador).filter((v, i, a) => a.indexOf(v) === i);
+
+    d.innerHTML = `
+      Pedido: ${pedido}<br><br>
+
+      ${primeiroEvento ? `
+      Primeira Separação: ${primeiroEvento.operador}<br>
+      ${new Date(primeiroEvento.data).toLocaleDateString()} 
+      ${new Date(primeiroEvento.data).toLocaleTimeString()}<br><br>
+      ` : ""}
+
+      ${segundoEvento ? `
+      Confirmado por: ${segundoEvento.operador}<br>
+      ${new Date(segundoEvento.data).toLocaleDateString()} 
+      ${new Date(segundoEvento.data).toLocaleTimeString()}<br><br>
+      ` : ""}
+
+      Separadores envolvidos: ${separadores.join(", ") || "N/A"}<br><br>
+
+      ${n2 ? `
+      1º Andar: ${n2.operador}<br>
+      ${new Date(n2.data).toLocaleDateString()} 
+      ${new Date(n2.data).toLocaleTimeString()}
+      ` : "Sem participação do 1º andar"}
+    `;
+
+    l.appendChild(d);
+  });
+
+  // Renderizar paginação
+  const paginacaoDiv = document.createElement("div");
+  paginacaoDiv.style.cssText = `
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #ccc;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+  `;
+
+  // Botão anterior
+  const btnAnterior = document.createElement("button");
+  btnAnterior.textContent = "← Anterior";
+  btnAnterior.disabled = paginaAtualRelatorio === 1;
+  btnAnterior.style.cssText = `
+    padding: 8px 12px;
+    background: ${paginaAtualRelatorio === 1 ? "#ccc" : "#1F4E8C"};
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: ${paginaAtualRelatorio === 1 ? "not-allowed" : "pointer"};
+    font-weight: bold;
+  `;
+  btnAnterior.onclick = () => {
+    if (paginaAtualRelatorio > 1) {
+      paginaAtualRelatorio--;
+      renderHistorico();
+    }
+  };
+
+  // Informação da página
+  const infoDiv = document.createElement("span");
+  infoDiv.style.cssText = `
+    font-weight: bold;
+    color: #333;
+    padding: 0 10px;
+  `;
+  infoDiv.textContent = `Página ${totalPaginas > 0 ? paginaAtualRelatorio : 0} de ${totalPaginas}`;
+
+  // Botão próximo
+  const btnProximo = document.createElement("button");
+  btnProximo.textContent = "Próximo →";
+  btnProximo.disabled = paginaAtualRelatorio >= totalPaginas;
+  btnProximo.style.cssText = `
+    padding: 8px 12px;
+    background: ${paginaAtualRelatorio >= totalPaginas ? "#ccc" : "#0B2E5F"};
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: ${paginaAtualRelatorio >= totalPaginas ? "not-allowed" : "pointer"};
+    font-weight: bold;
+  `;
+  btnProximo.onclick = () => {
+    if (paginaAtualRelatorio < totalPaginas) {
+      paginaAtualRelatorio++;
+      renderHistorico();
+    }
+  };
+
+  // Informação de resultados
+  const infoResultados = document.createElement("span");
+  infoResultados.style.cssText = `
+    color: #666;
+    font-size: 12px;
+  `;
+  infoResultados.textContent = `Exibindo ${Math.min(fim, totalPedidos)} de ${totalPedidos} pedidos`;
+
+  paginacaoDiv.appendChild(btnAnterior);
+  paginacaoDiv.appendChild(infoDiv);
+  paginacaoDiv.appendChild(btnProximo);
+  paginacaoDiv.appendChild(infoResultados);
+
+  l.appendChild(paginacaoDiv);
 }
 
 // Expor renderHistorico globalmente
@@ -1408,7 +1541,29 @@ window.limparPedidos = function() {
 }
 window.toggleTV = function() {
   document.body.classList.toggle("modo-tv");
+  const btnTest = document.getElementById("btn-test-overlay");
+  if (document.body.classList.contains("modo-tv")) {
+    btnTest.style.display = "block";
+  } else {
+    btnTest.style.display = "none";
+  }
   window.render();
+}
+window.testarOverlayTV = function() {
+  console.log("🧪 TESTE INICIADO");
+  console.log("Modo TV ativo?", document.body.classList.contains("modo-tv"));
+  
+  if (!document.body.classList.contains("modo-tv")) {
+    alert("Por favor, ative o Modo TV primeiro! 📺");
+    return;
+  }
+  
+  console.log("📺 Modo TV detectado! Chamando mostrarAlertaNaoEncontradoTV...");
+  console.log("Função existe?", typeof window.mostrarAlertaNaoEncontradoTV);
+  
+  // Chama a função diretamente
+  window.mostrarAlertaNaoEncontradoTV("TEST-001", "ABC123", Date.now(), Date.now() + 5*60*1000);
+  console.log("✅✅✅ OVERLAY DEVERIA ESTAR VISÍVEL AGORA!");
 }
 window.abrirRanked = function() {
   if(prompt("Senha:")!=="1617") return;

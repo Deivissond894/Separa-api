@@ -15,7 +15,7 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // Firebase Admin initialization
-const serviceAccountPath = path.join(__dirname, 'separacao-51e82-firebase-adminsdk-fbsvc-ff690cda13.json');
+const serviceAccountPath = path.join(__dirname, 'separacao-51e82-firebase-adminsdk-fbsvc-9a587665ce.json');
 const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
 
 admin.initializeApp({

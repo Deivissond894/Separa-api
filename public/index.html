@@ -360,16 +360,47 @@ body.modo-tv .status-text{display:none}
   </div>
 </div>
 
-<!-- MODAL HISTÓRICO -->
+<!-- MODAL RELATÓRIO (NOVO) -->
 <div class="modal" id="modalHistorico">
-  <div class="modal-content">
+  <div class="modal-content" style="max-width: 900px;">
     <div class="modal-header">
-      <strong>Relatório</strong>
+      <strong>📊 Relatório de Pedidos</strong>
       <span class="close" onclick="fecharHistorico()">✖</span>
     </div>
-    <input id="pesquisaHistorico" placeholder="Pesquisar no relatório">
-    <div id="listaHistorico"></div>
-    <button class="btn-limpar-hist" onclick="limparRelatorio()">Limpar relatório</button>
+
+    <!-- FILTROS -->
+    <div style="background: #f5f5f5; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; margin-bottom: 10px;">
+        <div>
+          <label style="font-size: 12px; color: #666; font-weight: bold;">Número do Pedido</label>
+          <input id="filtroNumeroPedido" placeholder="Ex: 12345" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <div>
+          <label style="font-size: 12px; color: #666; font-weight: bold;">Data Inicial</label>
+          <input id="filtroDataInicial" type="date" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <div>
+          <label style="font-size: 12px; color: #666; font-weight: bold;">Data Final</label>
+          <input id="filtroDataFinal" type="date" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <div style="display: flex; align-items: flex-end;">
+          <button onclick="aplicarFiltrosRelatorio()" style="padding: 8px 16px; background: #1F4E8C; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Filtrar</button>
+        </div>
+      </div>
+      <button onclick="limparFiltrosRelatorio()" style="padding: 8px 16px; background: #ddd; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Limpar Filtros</button>
+    </div>
+
+    <!-- RESULTADOS -->
+    <div id="listaHistorico" style="max-height: 400px; overflow-y: auto;"></div>
+
+    <!-- PAGINAÇÃO -->
+    <div id="paginacaoRelatorio" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ccc;"></div>
+
+    <!-- BOTÕES AÇÕES -->
+    <div style="margin-top: 20px; display: flex; gap: 10px;">
+      <button class="btn-limpar-hist" onclick="limparRelatorio()">🗑️ Limpar Relatório</button>
+      <button class="btn-relatorio" onclick="exportarRelatorio()" style="background: #27ae60; flex: 1;">📥 Exportar CSV</button>
+    </div>
   </div>
 </div>
 
@@ -424,11 +455,11 @@ let ranked = { n1: {}, n2: {} };
 let historicoRanked = [];
 
 // ===== PAGINAÇÃO DO RELATÓRIO =====
-let paginaAtualRelatorio = 1;
-const ITENS_POR_PAGINA = 10;
+let paginaRelatorio = 1;
+const ITENS_POR_PAGINA_REL = 10;
 let ultimoDocRelatorio = null;
+let filtrosPaginaAtual = {};
 let totalRegistrosRelatorio = 0;
-let pedidosCacheRelatorio = [];
 
 let operadorAtual = null;
 let operador2 = null;
@@ -459,7 +490,7 @@ onSnapshot(collection(db, "pedidosAtivos"), (snapshot) => {
 // Contar total de registros
 getCountFromServer(collection(db, "relatorioPedidos")).then(snapshot => {
   totalRegistrosRelatorio = snapshot.data().count;
-});
+}).catch(err => console.error("Erro ao contar registros:", err));
 
 // ===== LISTENERS RANKING =====
 onSnapshot(doc(db, "ranking", "mesAtual"), (snapshot) => {
@@ -1291,10 +1322,11 @@ setInterval(() => {
 // ===== HISTÓRICO =====
 function abrirHistorico() {
   if (prompt("Senha:") !== SENHA) return;
-  paginaAtualRelatorio = 1;
+  paginaRelatorio = 1;
   ultimoDocRelatorio = null;
+  filtrosPaginaAtual = { numero: "", dataInicial: "", dataFinal: "" };
   document.getElementById("modalHistorico").style.display = "flex";
-  renderHistorico();
+  carregarRelatorio();
 }
 function fecharHistorico() {
   document.getElementById("modalHistorico").style.display = "none";
@@ -1305,137 +1337,231 @@ function limparRelatorio() {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ senha: SENHA })
-    }).then(() => renderHistorico());
+    }).then(() => carregarRelatorio());
   }
 }
-async function renderHistorico() {
-  const l = document.getElementById("listaHistorico");
-  const filtro = campoPesquisaHistorico.value.trim().toLowerCase();
-  l.innerHTML = "<p>Carregando...</p>";
-
+async function carregarRelatorio() {
+  const listaDiv = document.getElementById("listaHistorico");
+  listaDiv.innerHTML = "<p>Carregando...</p>";
+  
   try {
-    let q;
+    const numPedido = document.getElementById("filtroNumeroPedido").value.trim();
+    const dataInicial = document.getElementById("filtroDataInicial").value;
+    const dataFinal = document.getElementById("filtroDataFinal").value;
     
-    if (filtro) {
-      // Com filtro: buscar todos e filtrar no cliente
-      const snapshot = await getDocs(query(collection(db, "relatorioPedidos"), orderBy("data", "desc")));
-      const dados = [];
-      snapshot.forEach(doc => {
-        dados.push({ id: doc.id, ...doc.data() });
-      });
-      pedidosCacheRelatorio = dados;
+    filtrosPaginaAtual = { numero: numPedido, dataInicial, dataFinal };
+    
+    let q;
+    if (paginaRelatorio === 1) {
+      q = query(collection(db, "relatorioPedidos"), orderBy("data", "desc"), limit(ITENS_POR_PAGINA_REL));
     } else {
-      // Sem filtro: buscar apenas 10 por página
-      if (paginaAtualRelatorio === 1) {
-        q = query(collection(db, "relatorioPedidos"), orderBy("data", "desc"), limit(ITENS_POR_PAGINA));
-      } else {
-        q = query(collection(db, "relatorioPedidos"), orderBy("data", "desc"), startAfter(ultimoDocRelatorio), limit(ITENS_POR_PAGINA));
-      }
-      const snapshot = await getDocs(q);
-      pedidosCacheRelatorio = [];
-      snapshot.forEach((doc, index) => {
-        pedidosCacheRelatorio.push({ id: doc.id, ...doc.data() });
-        if (index === snapshot.docs.length - 1) {
-          ultimoDocRelatorio = doc;
-        }
-      });
+      q = query(collection(db, "relatorioPedidos"), orderBy("data", "desc"), startAfter(ultimoDocRelatorio), limit(ITENS_POR_PAGINA_REL));
     }
-
-    // Processar dados
-    const mapa = {};
-    pedidosCacheRelatorio.forEach(r => {
-      if (!mapa[r.pedido]) mapa[r.pedido] = { eventos: [] };
+    
+    const snapshot = await getDocs(q);
+    const todosDados = [];
+    snapshot.forEach((doc, index) => {
+      todosDados.push({ id: doc.id, ...doc.data() });
+      if (index === snapshot.docs.length - 1) ultimoDocRelatorio = doc;
+    });
+    
+    // Agrupar por pedido
+    const mapaPedidos = {};
+    todosDados.forEach(r => {
+      if (!mapaPedidos[r.pedido]) mapaPedidos[r.pedido] = { eventos: [] };
       if (r.tipo === "n1") {
-        mapa[r.pedido].eventos.push(r);
-      }
-      if (r.tipo === "n2") {
-        mapa[r.pedido].andar2 = r;
+        mapaPedidos[r.pedido].eventos.push(r);
+      } else if (r.tipo === "n2") {
+        mapaPedidos[r.pedido].andar2 = r;
       }
     });
-
-    let pedidosFiltrados = Object.keys(mapa)
-      .filter(p => {
-        const item = mapa[p];
-        return item.eventos.length >= 2 && (!filtro || p.toLowerCase().includes(filtro));
-      });
-
-    const totalPedidos = filtro ? pedidosFiltrados.length : totalRegistrosRelatorio;
-    const totalPaginas = Math.ceil(totalPedidos / ITENS_POR_PAGINA);
-
-    l.innerHTML = "";
-
-    if (filtro) {
-      const inicio = (paginaAtualRelatorio - 1) * ITENS_POR_PAGINA;
-      const fim = inicio + ITENS_POR_PAGINA;
-      pedidosFiltrados = pedidosFiltrados.slice(inicio, fim);
-    }
-
-    if (pedidosFiltrados.length === 0) {
-      l.innerHTML = "<p style='text-align: center; color: #999;'>Nenhum pedido encontrado</p>";
+    
+    // Aplicar filtros
+    let pedidosProcessados = Object.entries(mapaPedidos)
+      .filter(([num, dados]) => {
+        const temEventos = dados.eventos.length >= 2;
+        const matchNumero = !numPedido || num.toLowerCase().includes(numPedido.toLowerCase());
+        
+        let matchData = true;
+        if (dataInicial || dataFinal) {
+          const primeiroEvento = dados.eventos[0];
+          if (primeiroEvento) {
+            const dataPedido = new Date(primeiroEvento.data);
+            if (dataInicial) {
+              const inicio = new Date(dataInicial);
+              inicio.setHours(0, 0, 0, 0);
+              matchData = matchData && dataPedido >= inicio;
+            }
+            if (dataFinal) {
+              const fim = new Date(dataFinal);
+              fim.setHours(23, 59, 59, 999);
+              matchData = matchData && dataPedido <= fim;
+            }
+          }
+        }
+        
+        return temEventos && matchNumero && matchData;
+      })
+      .map(([num, dados]) => ({ numero: num, ...dados }));
+    
+    totalRegistrosRelatorio = pedidosProcessados.length;
+    const totalPaginas = Math.ceil(totalRegistrosRelatorio / ITENS_POR_PAGINA_REL);
+    
+    listaDiv.innerHTML = "";
+    
+    if (pedidosProcessados.length === 0) {
+      listaDiv.innerHTML = "<p style='text-align: center; color: #999; padding: 20px;'>Nenhum pedido encontrado</p>";
     } else {
-      pedidosFiltrados.forEach(pedido => {
-        const d = document.createElement("div");
-        d.className = "historico-card";
-        const eventos = mapa[pedido].eventos;
-        const n2 = mapa[pedido].andar2;
-        const primeiroEvento = eventos[0];
-        const segundoEvento = eventos[1];
-        const separadores = eventos.map(e => e.operador).filter((v, i, a) => a.indexOf(v) === i);
-
-        d.innerHTML = `
-          Pedido: ${pedido}<br><br>
-          ${primeiroEvento ? `Primeira Separação: ${primeiroEvento.operador}<br>${new Date(primeiroEvento.data).toLocaleDateString()} ${new Date(primeiroEvento.data).toLocaleTimeString()}<br><br>` : ""}
-          ${segundoEvento ? `Confirmado por: ${segundoEvento.operador}<br>${new Date(segundoEvento.data).toLocaleDateString()} ${new Date(segundoEvento.data).toLocaleTimeString()}<br><br>` : ""}
-          Separadores envolvidos: ${separadores.join(", ") || "N/A"}<br><br>
-          ${n2 ? `1º Andar: ${n2.operador}<br>${new Date(n2.data).toLocaleDateString()} ${new Date(n2.data).toLocaleTimeString()}` : "Sem participação do 1º andar"}
+      pedidosProcessados.forEach(pedido => {
+        const card = document.createElement("div");
+        card.className = "historico-card";
+        
+        const primeiroEvento = pedido.eventos[0];
+        const segundoEvento = pedido.eventos[1];
+        const operadores = pedido.eventos.map(e => e.operador).filter((v, i, a) => a.indexOf(v) === i);
+        
+        card.innerHTML = `
+          <div style="font-weight: bold; font-size: 1.1em; margin-bottom: 10px;">Pedido: ${pedido.numero}</div>
+          <div style="margin: 8px 0;">
+            <strong>1ª Separação:</strong> ${primeiroEvento?.operador || "N/A"} - ${primeiroEvento ? new Date(primeiroEvento.data).toLocaleString('pt-BR') : "N/A"}
+          </div>
+          <div style="margin: 8px 0;">
+            <strong>Confirmação:</strong> ${segundoEvento?.operador || "N/A"} - ${segundoEvento ? new Date(segundoEvento.data).toLocaleString('pt-BR') : "N/A"}
+          </div>
+          <div style="margin: 8px 0;">
+            <strong>Operadores:</strong> ${operadores.join(", ")}
+          </div>
+          ${pedido.andar2 ? `<div style="margin: 8px 0; color: #1F4E8C;"><strong>1º Andar:</strong> ${pedido.andar2.operador} - ${new Date(pedido.andar2.data).toLocaleString('pt-BR')}</div>` : ""}
         `;
-        l.appendChild(d);
+        listaDiv.appendChild(card);
       });
     }
-
+    
     // Paginação
     const paginacaoDiv = document.createElement("div");
-    paginacaoDiv.style.cssText = `margin-top: 20px; padding-top: 20px; border-top: 1px solid #ccc; display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;`;
-
+    paginacaoDiv.style.cssText = "margin-top: 20px; padding-top: 15px; border-top: 1px solid #ccc; display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;";
+    
     const btnAnterior = document.createElement("button");
     btnAnterior.textContent = "← Anterior";
-    btnAnterior.disabled = paginaAtualRelatorio === 1;
-    btnAnterior.style.cssText = `padding: 8px 12px; background: ${paginaAtualRelatorio === 1 ? "#ccc" : "#1F4E8C"}; color: #fff; border: none; border-radius: 4px; cursor: ${paginaAtualRelatorio === 1 ? "not-allowed" : "pointer"}; font-weight: bold;`;
+    btnAnterior.disabled = paginaRelatorio === 1;
+    btnAnterior.style.cssText = `padding: 8px 12px; background: ${paginaRelatorio === 1 ? "#ccc" : "#1F4E8C"}; color: #fff; border: none; border-radius: 4px; cursor: ${paginaRelatorio === 1 ? "not-allowed" : "pointer"}; font-weight: bold;`;
     btnAnterior.onclick = async () => {
-      if (paginaAtualRelatorio > 1) {
-        paginaAtualRelatorio--;
+      if (paginaRelatorio > 1) {
+        paginaRelatorio--;
         ultimoDocRelatorio = null;
-        await renderHistorico();
+        await carregarRelatorio();
       }
     };
-
-    const infoDiv = document.createElement("span");
-    infoDiv.style.cssText = `font-weight: bold; color: #333; padding: 0 10px;`;
-    infoDiv.textContent = `Página ${totalPaginas > 0 ? paginaAtualRelatorio : 0} de ${totalPaginas}`;
-
+    
+    const infoSpan = document.createElement("span");
+    infoSpan.style.cssText = "font-weight: bold; color: #333; padding: 0 10px; min-width: 150px; text-align: center;";
+    infoSpan.textContent = `Página ${totalPaginas > 0 ? paginaRelatorio : 0} de ${totalPaginas}`;
+    
     const btnProximo = document.createElement("button");
     btnProximo.textContent = "Próximo →";
-    btnProximo.disabled = paginaAtualRelatorio >= totalPaginas || totalPaginas === 0;
-    btnProximo.style.cssText = `padding: 8px 12px; background: ${paginaAtualRelatorio >= totalPaginas ? "#ccc" : "#0B2E5F"}; color: #fff; border: none; border-radius: 4px; cursor: ${paginaAtualRelatorio >= totalPaginas ? "not-allowed" : "pointer"}; font-weight: bold;`;
+    btnProximo.disabled = paginaRelatorio >= totalPaginas || totalPaginas === 0;
+    btnProximo.style.cssText = `padding: 8px 12px; background: ${paginaRelatorio >= totalPaginas || totalPaginas === 0 ? "#ccc" : "#0B2E5F"}; color: #fff; border: none; border-radius: 4px; cursor: ${paginaRelatorio >= totalPaginas || totalPaginas === 0 ? "not-allowed" : "pointer"}; font-weight: bold;`;
     btnProximo.onclick = async () => {
-      if (paginaAtualRelatorio < totalPaginas) {
-        paginaAtualRelatorio++;
-        await renderHistorico();
+      if (paginaRelatorio < totalPaginas) {
+        paginaRelatorio++;
+        await carregarRelatorio();
       }
     };
-
+    
+    const btnExportar = document.createElement("button");
+    btnExportar.textContent = "📥 Exportar CSV";
+    btnExportar.style.cssText = "padding: 8px 12px; background: #27AE60; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;";
+    btnExportar.onclick = exportarRelatorio;
+    
     paginacaoDiv.appendChild(btnAnterior);
-    paginacaoDiv.appendChild(infoDiv);
+    paginacaoDiv.appendChild(infoSpan);
     paginacaoDiv.appendChild(btnProximo);
-    l.appendChild(paginacaoDiv);
+    paginacaoDiv.appendChild(btnExportar);
+    listaDiv.appendChild(paginacaoDiv);
   } catch (err) {
     console.error("Erro ao carregar relatório:", err);
-    l.innerHTML = "<p style='color: red;'>Erro ao carregar relatório</p>";
+    listaDiv.innerHTML = "<p style='color: red;'>Erro ao carregar relatório</p>";
+  }
+}
+function limparFiltrosRelatorio() {
+  document.getElementById("filtroNumeroPedido").value = "";
+  document.getElementById("filtroDataInicial").value = "";
+  document.getElementById("filtroDataFinal").value = "";
+  paginaRelatorio = 1;
+  ultimoDocRelatorio = null;
+  carregarRelatorio();
+}
+async function exportarRelatorio() {
+  try {
+    const numPedido = document.getElementById("filtroNumeroPedido").value.trim();
+    const dataInicial = document.getElementById("filtroDataInicial").value;
+    const dataFinal = document.getElementById("filtroDataFinal").value;
+    
+    let q = query(collection(db, "relatorioPedidos"), orderBy("data", "desc"));
+    const snapshot = await getDocs(q);
+    const todosDados = [];
+    snapshot.forEach(doc => {
+      todosDados.push({ id: doc.id, ...doc.data() });
+    });
+    
+    const mapaPedidos = {};
+    todosDados.forEach(r => {
+      if (!mapaPedidos[r.pedido]) mapaPedidos[r.pedido] = { eventos: [] };
+      if (r.tipo === "n1") {
+        mapaPedidos[r.pedido].eventos.push(r);
+      } else if (r.tipo === "n2") {
+        mapaPedidos[r.pedido].andar2 = r;
+      }
+    });
+    
+    let pedidosProcessados = Object.entries(mapaPedidos)
+      .filter(([num, dados]) => {
+        const temEventos = dados.eventos.length >= 2;
+        const matchNumero = !numPedido || num.toLowerCase().includes(numPedido.toLowerCase());
+        let matchData = true;
+        if (dataInicial || dataFinal) {
+          const primeiroEvento = dados.eventos[0];
+          if (primeiroEvento) {
+            const dataPedido = new Date(primeiroEvento.data);
+            if (dataInicial) {
+              const inicio = new Date(dataInicial);
+              inicio.setHours(0, 0, 0, 0);
+              matchData = matchData && dataPedido >= inicio;
+            }
+            if (dataFinal) {
+              const fim = new Date(dataFinal);
+              fim.setHours(23, 59, 59, 999);
+              matchData = matchData && dataPedido <= fim;
+            }
+          }
+        }
+        return temEventos && matchNumero && matchData;
+      })
+      .map(([num, dados]) => ({ numero: num, ...dados }));
+    
+    const csv = "Pedido,Data,Operador 1º Sep,Operador Confirmação,1º Andar\n" +
+      pedidosProcessados.map(p => {
+        const evento1 = p.eventos[0] || {};
+        const evento2 = p.eventos[1] || {};
+        const andar2 = p.andar2 || {};
+        return `${p.numero},${evento1.data ? new Date(evento1.data).toLocaleString('pt-BR') : ""},${evento1.operador || ""},${evento2.operador || ""},${andar2.operador || ""}`;
+      }).join("\n");
+    
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `relatorio_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  } catch (err) {
+    console.error("Erro ao exportar:", err);
+    alert("Erro ao exportar relatório");
   }
 }
 
-// Expor renderHistorico globalmente
-window.renderHistorico = renderHistorico;
+// Expor funções globalmente
+window.carregarRelatorio = carregarRelatorio;
+window.limparFiltrosRelatorio = limparFiltrosRelatorio;
+window.exportarRelatorio = exportarRelatorio;
 
 // ===== UTIL =====
 async function apagarPedido(c) {

@@ -68,6 +68,7 @@ button{border:none;cursor:pointer}
 .card{
   position:relative;
   padding:14px;
+  padding-right:70px;
   border-radius:6px;
   margin-top:12px;
   font-size:14px;
@@ -80,18 +81,42 @@ button{border:none;cursor:pointer}
 .info-operador{font-size:13px}
 .status-text{font-weight:bold;margin-top:6px}
 
-/* LIXEIRA */
-.btn-lixeira{
+/* BOTÕES DO CARD */
+.card-buttons{
   position:absolute;
-  top:6px;right:6px;
-  width:24px;height:24px;
+  top:6px;
+  right:6px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.btn-delete{
+  width:32px;
+  height:32px;
   background:#C0392B;
   color:#fff;
-  border-radius:50%;
+  border:none;
+  border-radius:4px;
+  cursor:pointer;
+  font-size:16px;
   display:flex;
   align-items:center;
   justify-content:center;
+}
+
+.btn-alert{
+  width:32px;
+  height:32px;
+  background:#E67E22;
+  color:#fff;
+  border:none;
+  border-radius:4px;
   cursor:pointer;
+  font-size:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
 /* BOTÃO TV */
@@ -144,7 +169,7 @@ body.modo-tv::before{
 body.modo-tv .topo{background:transparent;position:relative;z-index:1}
 body.modo-tv .container > *:not(.cards),
 body.modo-tv .info-operador,
-body.modo-tv .btn-lixeira,
+body.modo-tv .card-buttons,
 body.modo-tv .operadores-ref,
 body.modo-tv .pesquisa-wrap{display:none}
 
@@ -282,6 +307,21 @@ body.modo-tv .status-text{display:none}
     </div>
     <input id="scanner2" placeholder="Aguardando bipe..." disabled>
     <div id="card-andar2-container" style="margin-top: 20px;"></div>
+  </div>
+</div>
+
+<!-- MODAL PEÇA NÃO ENCONTRADA -->
+<div class="modal" id="modalNaoEncontrado">
+  <div class="modal-content">
+    <div class="modal-header">
+      <strong>Material Não Encontrado</strong>
+      <span class="close" onclick="fecharNaoEncontrado()">✖</span>
+    </div>
+    <input id="neoOperador" placeholder="Código do operador" type="number">
+    <input id="neoPedido" placeholder="Código do pedido" disabled>
+    <input id="neoPeca" placeholder="Código da peça">
+    <textarea id="neoObservacao" placeholder="Observação (opcional)" style="width:100%;padding:8px;margin-top:10px;border-radius:6px;border:1px solid #ccc;"></textarea>
+    <button onclick="salvarNaoEncontrado()" style="width:100%;padding:12px;margin-top:10px;background:#E67E22;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">Salvar</button>
   </div>
 </div>
 
@@ -550,6 +590,95 @@ function fecharAndar() {
   document.getElementById("modalAndar").style.display = "none";
 }
 
+// ===== MODAL NÃO ENCONTRADO =====
+let pedidoSelecionadoNeo = null;
+
+function abrirNaoEncontrado(pedido) {
+  pedidoSelecionadoNeo = pedido;
+  document.getElementById("neoPedido").value = pedido;
+  document.getElementById("neoOperador").value = "";
+  document.getElementById("neoPeca").value = "";
+  document.getElementById("neoObservacao").value = "";
+  document.getElementById("modalNaoEncontrado").style.display = "flex";
+  document.getElementById("neoOperador").focus();
+}
+
+function fecharNaoEncontrado() {
+  document.getElementById("modalNaoEncontrado").style.display = "none";
+  pedidoSelecionadoNeo = null;
+}
+
+async function salvarNaoEncontrado() {
+  const operador = document.getElementById("neoOperador").value.trim();
+  const peca = document.getElementById("neoPeca").value.trim();
+  const observacao = document.getElementById("neoObservacao").value.trim();
+  
+  if (!operador || !peca || !pedidoSelecionadoNeo) {
+    alert("Preencha operador e código da peça!");
+    return;
+  }
+  
+  try {
+    await addDoc(collection(db, "pedidosNaoEncontrados"), {
+      pedido: pedidoSelecionadoNeo,
+      codigoPeca: peca,
+      operador: operador,
+      nomeOperador: usuarios[operador] || "Desconhecido",
+      observacao: observacao || "",
+      data: Date.now(),
+      resolvido: false
+    });
+    
+    // Mostrar alerta no Modo TV
+    if (document.body.classList.contains("modo-tv")) {
+      mostrarAlertaNaoEncontrado(pedidoSelecionadoNeo);
+    }
+    
+    fecharNaoEncontrado();
+  } catch (err) {
+    console.error("Erro ao salvar:", err);
+    alert("Erro ao salvar!");
+  }
+}
+
+function mostrarAlertaNaoEncontrado(pedido) {
+  const overlay = document.createElement("div");
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  `;
+  
+  const card = document.createElement("div");
+  card.style.cssText = `
+    background: #fff;
+    padding: 40px;
+    border-radius: 12px;
+    text-align: center;
+    max-width: 500px;
+  `;
+  
+  card.innerHTML = `
+    <div style="font-size: 48px; font-weight: bold; color: #C0392B; margin-bottom: 20px;">${pedido}</div>
+    <div style="font-size: 24px; color: #333; margin-bottom: 20px;">Material não encontrado</div>
+    <div style="font-size: 18px; color: #666;">Procure seu vendedor!</div>
+  `;
+  
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+  
+  setTimeout(() => {
+    overlay.remove();
+  }, 5000);
+}
+
 usuario2.addEventListener("input", () => {
   const nome = usuarios[usuario2.value];
   if (nome) {
@@ -782,7 +911,10 @@ function render() {
       d.className = "card " + p.status;
       d.id = `card-${c}`;
       d.innerHTML = `
-        <button class="btn-lixeira" onclick="apagarPedido('${c}')">🗑</button>
+        <div class="card-buttons">
+          <button class="btn-delete" onclick="apagarPedido('${c}')">🗑️</button>
+          <button class="btn-alert" onclick="abrirNaoEncontrado('${c}')">🚨</button>
+        </div>
         Pedido: ${c}
         <div class="status-text">Status: ${statusTexto}</div>
         ${p.status === "histórico" ? `<div class="info-operador">Tipo: ${p.tipo === "n1" ? "Térreo" : "1º Andar"}</div>` : ""}

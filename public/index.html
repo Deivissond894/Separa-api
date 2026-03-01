@@ -342,6 +342,7 @@ body.modo-tv .status-text{display:none}
       <span class="close" onclick="fecharNaoEncontrado()">✖</span>
     </div>
     <input id="neoOperador" placeholder="Código do operador" type="number">
+    <div id="neoNomeOperador" class="operador-ativo" style="display:none;"></div>
     <input id="neoPedido" placeholder="Código do pedido" disabled>
     <input id="neoPeca" placeholder="Código da peça">
     <textarea id="neoObservacao" placeholder="Observação (opcional)" style="width:100%;padding:8px;margin-top:10px;border-radius:6px;border:1px solid #ccc;"></textarea>
@@ -615,6 +616,24 @@ function fecharAndar() {
   document.getElementById("modalAndar").style.display = "none";
 }
 
+// ===== EVENT LISTENER OPERADOR (Modal Não Encontrado) =====
+document.addEventListener("input", (e) => {
+  if (e.target.id === "neoOperador") {
+    const codigo = e.target.value.trim();
+    const nomeDiv = document.getElementById("neoNomeOperador");
+    
+    if (codigo && usuarios[codigo]) {
+      nomeDiv.innerHTML = `Operador: <span style="color:#0B2E5F;font-weight:bold;">${usuarios[codigo]}</span>`;
+      nomeDiv.style.display = "block";
+    } else if (codigo) {
+      nomeDiv.innerHTML = `<span style="color:#C0392B;">Operador não encontrado</span>`;
+      nomeDiv.style.display = "block";
+    } else {
+      nomeDiv.style.display = "none";
+    }
+  }
+});
+
 // ===== MODAL NÃO ENCONTRADO =====
 window.abrirNaoEncontrado = function(pedido) {
   console.log("Abrindo modal para pedido:", pedido);
@@ -623,6 +642,7 @@ window.abrirNaoEncontrado = function(pedido) {
   document.getElementById("neoOperador").value = "";
   document.getElementById("neoPeca").value = "";
   document.getElementById("neoObservacao").value = "";
+  document.getElementById("neoNomeOperador").innerHTML = "";
   const modal = document.getElementById("modalNaoEncontrado");
   console.log("Modal encontrado:", modal);
   modal.style.display = "flex";

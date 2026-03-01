@@ -139,8 +139,9 @@ body.modo-tv::before{
   background: linear-gradient(-45deg, #4b0082, #8a2be2, #d800ff, #0000ff);
   background-size: 400% 400%;
   animation: gradientFlow 15s ease-in-out infinite;
-  z-index:-1;
+  z-index:0;
 }
+body.modo-tv .topo{background:transparent;position:relative;z-index:1}
 body.modo-tv .container > *:not(.cards),
 body.modo-tv .info-operador,
 body.modo-tv .btn-lixeira,
@@ -152,6 +153,8 @@ body.modo-tv .container{
   background:transparent;
   margin:0;
   padding:20px;
+  position:relative;
+  z-index:1;
 }
 
 /* GRID TV */

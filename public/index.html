@@ -1351,19 +1351,12 @@ async function carregarRelatorio() {
     
     filtrosPaginaAtual = { numero: numPedido, dataInicial, dataFinal };
     
-    // Buscar 10 registros com paginação
-    let q;
-    if (paginaRelatorio === 1) {
-      q = query(collection(db, "relatorioPedidos"), orderBy("data", "desc"), limit(ITENS_POR_PAGINA_REL));
-    } else {
-      q = query(collection(db, "relatorioPedidos"), orderBy("data", "desc"), startAfter(ultimoDocRelatorio), limit(ITENS_POR_PAGINA_REL));
-    }
-    
+    // Buscar todos os registros (sem limit) para aplicar filtros
+    let q = query(collection(db, "relatorioPedidos"), orderBy("data", "desc"));
     const snapshot = await getDocs(q);
     const todosDados = [];
-    snapshot.forEach((doc, index) => {
+    snapshot.forEach(doc => {
       todosDados.push({ id: doc.id, ...doc.data() });
-      if (index === snapshot.docs.length - 1) ultimoDocRelatorio = doc;
     });
     
     // Agrupar por pedido

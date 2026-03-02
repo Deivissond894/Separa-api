@@ -76,32 +76,52 @@ button{border:none;cursor:pointer}
   background:#FFD200;
   overflow:visible;
 }
+.separacao::before{
+  content:'';
+  position:absolute;
+  bottom:-50px;
+  right:-60px;
+  width:120px;
+  height:100px;
+  background-image:url('mascara_carnaval.png');
+  background-size:contain;
+  background-repeat:no-repeat;
+  transform:rotate(29deg);
+  opacity:1;
+  pointer-events:none;
+  z-index:10;
+  display:none;
+}
+body.modo-tv .separacao.col1::before,
+body.modo-tv .separacao.col3::before{
+  display:block;
+}
 .confirmado{
   background:#008000;
   color:#fff;
   overflow:visible;
 }
-.histórico{background:#A9A9A9;color:#fff}
-
-/* FOTOS ENTRE COLUNAS - MODO TV */
-.foto-entre-colunas{
-  display:none;
-  align-items:flex-end;
-  justify-content:center;
-  min-height:80vh;
-  pointer-events:none;
-}
-
-body.modo-tv .foto-entre-colunas{
-  display:flex;
-}
-
-.foto-entre-colunas img{
-  max-width:120px;
-  max-height:140px;
-  object-fit:contain;
+.confirmado::before{
+  content:'';
+  position:absolute;
+  bottom:-50px;
+  right:-60px;
+  width:160px;
+  height:140px;
+  background-image:url('Carnaval.png');
+  background-size:contain;
+  background-repeat:no-repeat;
   transform:rotate(29deg);
+  opacity:1;
+  pointer-events:none;
+  z-index:10;
+  display:none;
 }
+body.modo-tv .confirmado.col1::before,
+body.modo-tv .confirmado.col3::before{
+  display:block;
+}
+.histórico{background:#A9A9A9;color:#fff}
 
 .timer{margin-top:6px;font-weight:bold}
 .info-operador{font-size:13px}
@@ -153,17 +173,22 @@ body.modo-tv .foto-entre-colunas{
 }
 
 /* ===== MODO TV ===== */
-@keyframes gradientFlow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-body.modo-tv{
+body.modo-tv{background:#0B2E5F}
+body.modo-tv::before{
+  content:'';
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
   background: linear-gradient(-45deg, #4b0082, #8a2be2, #d800ff, #0000ff);
   background-size: 400% 400%;
   animation: gradientFlow 15s ease-in-out infinite;
-  position: relative;
+  z-index:0;
+}
+body.modo-tv .container{
+  position:relative;
+  z-index:1;
 }
 body.modo-tv .container > *:not(.cards),
 body.modo-tv .info-operador,
@@ -316,6 +341,13 @@ body.modo-tv .card{
   text-align:center;
   padding:30px;
   color:#666;
+}
+
+/* ===== GRADIENTE ANIMADO MODO TV ===== */
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 /* OVERLAY MATERIAL NÃO ENCONTRADO - TV */
@@ -1083,28 +1115,8 @@ function render() {
     grid.appendChild(headerSep);
     grid.appendChild(headerConf);
     grid.appendChild(colSep1);
-    
-    // Foto entre col1 e col2
-    const fotoEntre1e2 = document.createElement("div");
-    fotoEntre1e2.className = "foto-entre-colunas";
-    const imgMascara = document.createElement("img");
-    imgMascara.src = "mascara_carnaval.png";
-    imgMascara.alt = "Mascara Carnaval";
-    fotoEntre1e2.appendChild(imgMascara);
-    grid.appendChild(fotoEntre1e2);
-    
     grid.appendChild(colSep2);
     grid.appendChild(colConfirmado1);
-    
-    // Foto entre col3 e col4
-    const fotoEntre3e4 = document.createElement("div");
-    fotoEntre3e4.className = "foto-entre-colunas";
-    const imgCarnaval = document.createElement("img");
-    imgCarnaval.src = "Carnaval.png";
-    imgCarnaval.alt = "Carnaval";
-    fotoEntre3e4.appendChild(imgCarnaval);
-    grid.appendChild(fotoEntre3e4);
-    
     grid.appendChild(colConfirmado2);
     cards.appendChild(grid);
   } else {

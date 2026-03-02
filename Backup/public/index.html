@@ -76,52 +76,32 @@ button{border:none;cursor:pointer}
   background:#FFD200;
   overflow:visible;
 }
-.separacao::before{
-  content:'';
-  position:absolute;
-  bottom:-50px;
-  right:50%;
-  transform:translateX(50%) rotate(29deg);
-  width:120px;
-  height:100px;
-  background-image:url('mascara_carnaval.png');
-  background-size:contain;
-  background-repeat:no-repeat;
-  opacity:1;
-  pointer-events:none;
-  z-index:10;
-  display:none;
-}
-body.modo-tv .separacao.col1::before,
-body.modo-tv .separacao.col3::before{
-  display:block;
-}
 .confirmado{
   background:#008000;
   color:#fff;
   overflow:visible;
 }
-.confirmado::before{
-  content:'';
-  position:absolute;
-  bottom:-50px;
-  right:50%;
-  transform:translateX(50%) rotate(29deg);
-  width:160px;
-  height:140px;
-  background-image:url('Carnaval.png');
-  background-size:contain;
-  background-repeat:no-repeat;
-  opacity:1;
-  pointer-events:none;
-  z-index:10;
-  display:none;
-}
-body.modo-tv .confirmado.col1::before,
-body.modo-tv .confirmado.col3::before{
-  display:block;
-}
 .histórico{background:#A9A9A9;color:#fff}
+
+/* FOTOS ENTRE COLUNAS - MODO TV */
+.foto-entre-colunas{
+  display:none;
+  align-items:flex-end;
+  justify-content:center;
+  min-height:80vh;
+  pointer-events:none;
+}
+
+body.modo-tv .foto-entre-colunas{
+  display:flex;
+}
+
+.foto-entre-colunas img{
+  max-width:120px;
+  max-height:140px;
+  object-fit:contain;
+  transform:rotate(29deg);
+}
 
 .timer{margin-top:6px;font-weight:bold}
 .info-operador{font-size:13px}
@@ -1092,8 +1072,28 @@ function render() {
     grid.appendChild(headerSep);
     grid.appendChild(headerConf);
     grid.appendChild(colSep1);
+    
+    // Foto entre col1 e col2
+    const fotoEntre1e2 = document.createElement("div");
+    fotoEntre1e2.className = "foto-entre-colunas";
+    const imgMascara = document.createElement("img");
+    imgMascara.src = "mascara_carnaval.png";
+    imgMascara.alt = "Mascara Carnaval";
+    fotoEntre1e2.appendChild(imgMascara);
+    grid.appendChild(fotoEntre1e2);
+    
     grid.appendChild(colSep2);
     grid.appendChild(colConfirmado1);
+    
+    // Foto entre col3 e col4
+    const fotoEntre3e4 = document.createElement("div");
+    fotoEntre3e4.className = "foto-entre-colunas";
+    const imgCarnaval = document.createElement("img");
+    imgCarnaval.src = "Carnaval.png";
+    imgCarnaval.alt = "Carnaval";
+    fotoEntre3e4.appendChild(imgCarnaval);
+    grid.appendChild(fotoEntre3e4);
+    
     grid.appendChild(colConfirmado2);
     cards.appendChild(grid);
   } else {

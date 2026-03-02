@@ -324,6 +324,49 @@ body.modo-tv .card{
   padding:30px;
   color:#666;
 }
+
+/* OVERLAY MATERIAL NÃO ENCONTRADO - TV */
+.overlay-material-nao-encontrado{
+  position:fixed;
+  inset:0;
+  background:rgba(128,128,128,0.7);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:5000;
+}
+
+.overlay-material-nao-encontrado.ativo{
+  display:flex;
+}
+
+.overlay-content{
+  text-align:center;
+  color:#fff;
+  font-weight:bold;
+}
+
+.overlay-warning{
+  font-size:4vw;
+  margin-bottom:20px;
+}
+
+.overlay-material{
+  font-size:2.5vw;
+  margin-bottom:30px;
+}
+
+.overlay-pedido{
+  font-size:6vw;
+  color:#FF6B6B;
+  margin-bottom:30px;
+  font-weight:900;
+}
+
+.overlay-vendedor{
+  font-size:2.8vw;
+  color:#FFD700;
+}
 </style>
 </head>
 
@@ -449,6 +492,15 @@ body.modo-tv .card{
     <textarea id="observacaoMNE" placeholder="Observação (Opcional)" style="width: 100%; padding: 10px; margin: 10px 0; resize: vertical; min-height: 80px;"></textarea>
     <button onclick="registrarMaterialNaoEncontrado()" style="width: 100%; padding: 10px; background: #E67E22; color: white; border: none; cursor: pointer; margin-top: 10px;">Registrar</button>
     <button onclick="fecharModalMaterialNaoEncontrado()" style="width: 100%; padding: 10px; margin-top: 10px; background: #C0392B; color: white; border: none; cursor: pointer;">Cancelar</button>
+  </div>
+</div>
+
+<!-- OVERLAY MATERIAL NÃO ENCONTRADO - TV -->
+<div class="overlay-material-nao-encontrado" id="overlayMaterialNaoEncontrado">
+  <div class="overlay-content">
+    <div class="overlay-warning">⚠️ Material (<span id="overlayMaterial">ABC123</span>) não encontrado</div>
+    <div class="overlay-pedido" id="overlayPedido">TEST-001</div>
+    <div class="overlay-vendedor">PROCURE SEU VENDEDOR</div>
   </div>
 </div>
 
@@ -702,6 +754,13 @@ scanner.addEventListener("keydown", async (e) => {
           atualizadores: atualizadores,
           ultimaAtualizacao: agoraServidorMs()
         }, { merge: true });
+        
+        // Remover cor vermelha do card (volta para amarelo padrão de separação)
+        const card = document.getElementById(`card-${c}`);
+        if (card) {
+          card.style.backgroundColor = "";
+          card.style.color = "";
+        }
         
         // Atualizar relatório com participação na atualização
         const relatorioDocs = await getDocs(query(collection(db, "relatorioPedidos"), orderBy("data", "desc")));
@@ -1592,8 +1651,31 @@ async function registrarMaterialNaoEncontrado() {
     
     console.log("[MNE] Material não encontrado registrado:", { codigo, operador: nomeOperador, material: nomeMaterial });
     
+    // Mudar cor do card para vermelho
+    const card = document.getElementById(`card-${codigo}`);
+    if (card) {
+      card.style.backgroundColor = "#C0392B";
+      card.style.color = "#fff";
+    }
+    
     fecharModalMaterialNaoEncontrado();
-    alert("Material não encontrado registrado com sucesso!");
+    
+    // Mostrar overlay apenas em modo TV
+    const modoTV = document.body.classList.contains("modo-tv");
+    if (modoTV) {
+      const overlay = document.getElementById("overlayMaterialNaoEncontrado");
+      document.getElementById("overlayMaterial").innerText = nomeMaterial;
+      document.getElementById("overlayPedido").innerText = codigo;
+      overlay.classList.add("ativo");
+      
+      // Remover overlay após 5 segundos
+      setTimeout(() => {
+        overlay.classList.remove("ativo");
+      }, 5000);
+    } else {
+      alert("Material não encontrado registrado com sucesso!");
+    }
+    
     render();
   } catch (err) {
     console.error("[MNE] Erro ao registrar:", err);

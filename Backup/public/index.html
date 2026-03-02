@@ -173,7 +173,10 @@ body.modo-tv .confirmado.col3::before{
 }
 
 /* ===== MODO TV ===== */
-body.modo-tv{background:#0B2E5F}
+body.modo-tv{
+  background:#0B2E5F !important;
+  position:relative;
+}
 body.modo-tv::before{
   content:'';
   position:fixed;
@@ -185,6 +188,7 @@ body.modo-tv::before{
   background-size: 400% 400%;
   animation: gradientFlow 15s ease-in-out infinite;
   z-index:-1;
+  pointer-events:none;
 }
 body.modo-tv .container{
   position:relative;
@@ -396,6 +400,9 @@ body.modo-tv .card{
 </head>
 
 <body>
+
+<!-- GRADIENTE TV BACKGROUND -->
+<div id="gradiente-tv" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(-45deg,#4b0082,#8a2be2,#d800ff,#0000ff);background-size:400% 400%;animation:gradientFlow 15s ease-in-out infinite;z-index:-1;pointer-events:none;"></div>
 
 <div class="topo">
   <img src="logo-topo.png">
@@ -1793,6 +1800,10 @@ window.limparPedidos = function() {
 }
 window.toggleTV = function() {
   document.body.classList.toggle("modo-tv");
+  const gradiente = document.getElementById("gradiente-tv");
+  if (gradiente) {
+    gradiente.style.display = document.body.classList.contains("modo-tv") ? "block" : "none";
+  }
   window.render();
 }
 window.abrirRanked = async function() {

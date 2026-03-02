@@ -79,7 +79,7 @@ button{border:none;cursor:pointer}
 .separacao::before{
   content:'';
   position:absolute;
-  top:-50px;
+  bottom:-50px;
   right:-60px;
   width:120px;
   height:100px;
@@ -92,7 +92,8 @@ button{border:none;cursor:pointer}
   z-index:10;
   display:none;
 }
-body.modo-tv .separacao::before{
+body.modo-tv .separacao.col1::before,
+body.modo-tv .separacao.col3::before{
   display:block;
 }
 .confirmado{
@@ -103,8 +104,8 @@ body.modo-tv .separacao::before{
 .confirmado::before{
   content:'';
   position:absolute;
-  bottom:-70px;
-  left:-80px;
+  bottom:-50px;
+  right:-60px;
   width:160px;
   height:140px;
   background-image:url('Carnaval.png');
@@ -116,7 +117,8 @@ body.modo-tv .separacao::before{
   z-index:10;
   display:none;
 }
-body.modo-tv .confirmado::before{
+body.modo-tv .confirmado.col1::before,
+body.modo-tv .confirmado.col3::before{
   display:block;
 }
 .histórico{background:#A9A9A9;color:#fff}
@@ -1058,23 +1060,29 @@ function render() {
       // Distribuir entre as colunas alternadamente
       if (p.status === "separacao") {
         if (contadorSep % 2 === 0) {
+          d.classList.add("col1");
           colSep1.appendChild(d);
         } else {
+          d.classList.add("col2");
           colSep2.appendChild(d);
         }
         contadorSep++;
       } else if (p.status === "confirmado") {
         if (contadorConf % 2 === 0) {
+          d.classList.add("col3");
           colConfirmado1.appendChild(d);
         } else {
+          d.classList.add("col4");
           colConfirmado2.appendChild(d);
         }
         contadorConf++;
       } else {
         // histórico vai para confirmados alternadamente
         if (contadorConf % 2 === 0) {
+          d.classList.add("col3");
           colConfirmado1.appendChild(d);
         } else {
+          d.classList.add("col4");
           colConfirmado2.appendChild(d);
         }
         contadorConf++;

@@ -173,10 +173,7 @@ body.modo-tv .confirmado.col3::before{
 }
 
 /* ===== MODO TV ===== */
-body.modo-tv{
-  background:#0B2E5F !important;
-  position:relative;
-}
+body.modo-tv{background:#0B2E5F}
 body.modo-tv::before{
   content:'';
   position:fixed;
@@ -188,7 +185,6 @@ body.modo-tv::before{
   background-size: 400% 400%;
   animation: gradientFlow 15s ease-in-out infinite;
   z-index:-1;
-  pointer-events:none;
 }
 body.modo-tv .container{
   position:relative;
@@ -401,9 +397,6 @@ body.modo-tv .card{
 
 <body>
 
-<!-- GRADIENTE TV BACKGROUND -->
-<div id="gradiente-tv" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(-45deg,#4b0082,#8a2be2,#d800ff,#0000ff);background-size:400% 400%;animation:gradientFlow 15s ease-in-out infinite;z-index:-1;pointer-events:none;"></div>
-
 <div class="topo">
   <img src="logo-topo.png">
 </div>
@@ -536,6 +529,11 @@ body.modo-tv .card{
   </div>
 </div>
 
+<!-- ÁUDIO PARA BIPES -->
+<audio id="audioBip" preload="auto">
+  <source src="som-bip.mp3" type="audio/mpeg">
+</audio>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
@@ -616,17 +614,6 @@ const nomeN1 = document.getElementById("nome-n1");
 const opBoxN2 = document.getElementById("op-ativo-n2");
 const nomeN2 = document.getElementById("nome-n2");
 
-// ===== SOM DE BIP (APENAS TÉRREO) =====
-function tocarSomBip() {
-  try {
-    const audio = new Audio('/som-bip.mp3');
-    audio.volume = 0.7;
-    audio.play().catch(err => console.warn('[SOM] Erro ao tocar áudio:', err));
-  } catch (err) {
-    console.warn('[SOM] Erro ao criar áudio:', err);
-  }
-}
-
 // ===== INICIALIZAR LISTENERS DO FIRESTORE =====
 onSnapshot(collection(db, "pedidosAtivos"), (snapshot) => {
   pedidos = {};
@@ -681,6 +668,21 @@ window.addEventListener("load", () => {
 });
 
 // ===== TÉRREO =====
+// Função para tocar bip (apenas fora do "Primeiro Andar")
+function tocarBip() {
+  // Verifica se modal do Primeiro Andar está aberto
+  const modalAndar = document.getElementById("modalAndar");
+  if (modalAndar && modalAndar.style.display === "flex") {
+    return; // Não toca se estamos no Primeiro Andar
+  }
+  
+  const audio = document.getElementById("audioBip");
+  if (audio) {
+    audio.currentTime = 0;
+    audio.play().catch(err => console.log("Erro ao tocar áudio:", err));
+  }
+}
+
 usuario.addEventListener("input", () => {
   const nome = usuarios[usuario.value];
   if (nome) {
@@ -703,7 +705,6 @@ scanner.addEventListener("keydown", async (e) => {
     
     if (!pedidos[c]) {
       // 1º bip: começa em "separacao"
-      tocarSomBip(); // ✔️ TOCAR SOM APENAS NO TÉRREO
       await setDoc(doc(db, "pedidosAtivos", c), {
         status: "separacao",
         iniciou: operadorAtual,
@@ -716,6 +717,7 @@ scanner.addEventListener("keydown", async (e) => {
         operador: operadorAtual,
         data: agora
       });
+      tocarBip(); // Toca o bip após primeiro sucesso
     } else {
       // 2º bip: muda para "confirmado"
       const statusAtual = pedidos[c].status;
@@ -724,7 +726,6 @@ scanner.addEventListener("keydown", async (e) => {
       
       if (statusAtual === "separacao") {
         // separacao → confirmado - USAR SERVIDOR COMO FONTE DA VERDADE
-        tocarSomBip(); // ✔️ TOCAR SOM APENAS NO TÉRREO
         console.log("[CONFIRM][START]", { codigo: c, statusAtual, separadoresAtuais, iniciouAtual, operadorAtual });
         try {
           const response = await fetch(`${API_URL}/api/pedidos-confirmados/${c}`, {
@@ -769,6 +770,7 @@ scanner.addEventListener("keydown", async (e) => {
           console.log("[CONFIRM][SETDOC]", updateData);
           await setDoc(doc(db, "pedidosAtivos", c), updateData, { merge: true });
           console.log("[CONFIRM][DONE]", { codigo: c });
+          tocarBip(); // Toca o bip após confirmação com sucesso
 
           // Agenda deleção apenas na coleção pedidosConfirmados após expirar (15min server-driven)
           agendarRemocaoConfirmado(c, tempoExpiracao, agoraServidor);
@@ -1800,10 +1802,6 @@ window.limparPedidos = function() {
 }
 window.toggleTV = function() {
   document.body.classList.toggle("modo-tv");
-  const gradiente = document.getElementById("gradiente-tv");
-  if (gradiente) {
-    gradiente.style.display = document.body.classList.contains("modo-tv") ? "block" : "none";
-  }
   window.render();
 }
 window.abrirRanked = async function() {

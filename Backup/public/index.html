@@ -1651,13 +1651,6 @@ async function registrarMaterialNaoEncontrado() {
     
     console.log("[MNE] Material não encontrado registrado:", { codigo, operador: nomeOperador, material: nomeMaterial });
     
-    // Mudar cor do card para vermelho
-    const card = document.getElementById(`card-${codigo}`);
-    if (card) {
-      card.style.backgroundColor = "#C0392B";
-      card.style.color = "#fff";
-    }
-    
     fecharModalMaterialNaoEncontrado();
     
     // Mostrar overlay apenas em modo TV
@@ -1677,6 +1670,15 @@ async function registrarMaterialNaoEncontrado() {
     }
     
     render();
+    
+    // Mudar cor do card para vermelho APÓS render
+    setTimeout(() => {
+      const card = document.getElementById(`card-${codigo}`);
+      if (card) {
+        card.style.backgroundColor = "#C0392B";
+        card.style.color = "#fff";
+      }
+    }, 10);
   } catch (err) {
     console.error("[MNE] Erro ao registrar:", err);
     alert("Erro ao registrar material não encontrado.");

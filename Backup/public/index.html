@@ -609,6 +609,17 @@ const nomeN1 = document.getElementById("nome-n1");
 const opBoxN2 = document.getElementById("op-ativo-n2");
 const nomeN2 = document.getElementById("nome-n2");
 
+// ===== SOM DE BIP (APENAS TÉRREO) =====
+function tocarSomBip() {
+  try {
+    const audio = new Audio('/som-bip.mp3');
+    audio.volume = 0.7;
+    audio.play().catch(err => console.warn('[SOM] Erro ao tocar áudio:', err));
+  } catch (err) {
+    console.warn('[SOM] Erro ao criar áudio:', err);
+  }
+}
+
 // ===== INICIALIZAR LISTENERS DO FIRESTORE =====
 onSnapshot(collection(db, "pedidosAtivos"), (snapshot) => {
   pedidos = {};
@@ -685,6 +696,7 @@ scanner.addEventListener("keydown", async (e) => {
     
     if (!pedidos[c]) {
       // 1º bip: começa em "separacao"
+      tocarSomBip(); // ✔️ TOCAR SOM APENAS NO TÉRREO
       await setDoc(doc(db, "pedidosAtivos", c), {
         status: "separacao",
         iniciou: operadorAtual,
@@ -705,6 +717,7 @@ scanner.addEventListener("keydown", async (e) => {
       
       if (statusAtual === "separacao") {
         // separacao → confirmado - USAR SERVIDOR COMO FONTE DA VERDADE
+        tocarSomBip(); // ✔️ TOCAR SOM APENAS NO TÉRREO
         console.log("[CONFIRM][START]", { codigo: c, statusAtual, separadoresAtuais, iniciouAtual, operadorAtual });
         try {
           const response = await fetch(`${API_URL}/api/pedidos-confirmados/${c}`, {

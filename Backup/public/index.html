@@ -153,7 +153,18 @@ body.modo-tv .foto-entre-colunas{
 }
 
 /* ===== MODO TV ===== */
-body.modo-tv{background:#0B2E5F}
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+body.modo-tv{
+  background: linear-gradient(-45deg, #4b0082, #8a2be2, #d800ff, #0000ff);
+  background-size: 400% 400%;
+  animation: gradientFlow 15s ease-in-out infinite;
+  position: relative;
+}
 body.modo-tv .container > *:not(.cards),
 body.modo-tv .info-operador,
 body.modo-tv .btn-lixeira,

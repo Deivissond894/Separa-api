@@ -173,7 +173,7 @@ body.modo-tv .confirmado.col3::before{
 }
 
 /* ===== MODO TV ===== */
-body.modo-tv{background:#0B2E5F}
+body.modo-tv{background:#0B2E5F;position:relative}
 body.modo-tv::before{
   content:'';
   position:fixed;
@@ -184,11 +184,12 @@ body.modo-tv::before{
   background: linear-gradient(-45deg, #4b0082, #8a2be2, #d800ff, #0000ff);
   background-size: 400% 400%;
   animation: gradientFlow 15s ease-in-out infinite;
-  z-index:-1;
+  z-index:1;
+  pointer-events:none;
 }
 body.modo-tv .container{
   position:relative;
-  z-index:10;
+  z-index:100;
 }
 body.modo-tv .container > *:not(.cards),
 body.modo-tv .info-operador,

@@ -139,6 +139,20 @@ body.modo-tv .confirmado::before{
   cursor:pointer;
 }
 
+/* BOTÃO MATERIAL NÃO ENCONTRADO */
+.btn-material-nao-encontrado{
+  position:absolute;
+  top:6px;right:34px;
+  width:24px;height:24px;
+  background:#E67E22;
+  color:#fff;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+
 /* BOTÃO TV */
 .btn-tv{
   position:fixed;
@@ -418,6 +432,23 @@ body.modo-tv .card{
     <div id="rankedAtual"></div>
     <div id="rankedHistorico"></div>
     <button class="btn-limpar-hist" onclick="limparRanked()">Zerar ranking</button>
+  </div>
+</div>
+
+<!-- MODAL MATERIAL NÃO ENCONTRADO -->
+<div class="modal" id="modalMaterialNaoEncontrado">
+  <div class="modal-content">
+    <div class="modal-header">
+      <strong>Material Não Encontrado</strong>
+      <span class="close" onclick="fecharModalMaterialNaoEncontrado()">✖</span>
+    </div>
+    <input id="pedidoMNE" placeholder="Número do pedido" style="width: 100%; padding: 10px; margin: 10px 0;" readonly>
+    <input id="codigoOperadorMNE" placeholder="Código do operador" style="width: 100%; padding: 10px; margin: 10px 0;">
+    <div id="nomeOperadorMNE" style="padding: 10px; background: #f0f0f0; border-radius: 4px; margin: 10px 0; display: none;"></div>
+    <input id="nomeMaterialMNE" placeholder="Nome do material" style="width: 100%; padding: 10px; margin: 10px 0;">
+    <textarea id="observacaoMNE" placeholder="Observação (Opcional)" style="width: 100%; padding: 10px; margin: 10px 0; resize: vertical; min-height: 80px;"></textarea>
+    <button onclick="registrarMaterialNaoEncontrado()" style="width: 100%; padding: 10px; background: #E67E22; color: white; border: none; cursor: pointer; margin-top: 10px;">Registrar</button>
+    <button onclick="fecharModalMaterialNaoEncontrado()" style="width: 100%; padding: 10px; margin-top: 10px; background: #C0392B; color: white; border: none; cursor: pointer;">Cancelar</button>
   </div>
 </div>
 
@@ -1005,6 +1036,7 @@ function render() {
       d.className = "card " + p.status;
       d.id = `card-${c}`;
       d.innerHTML = `
+        <button class="btn-material-nao-encontrado" onclick="abrirModalMaterialNaoEncontrado('${c}')">✖</button>
         <button class="btn-lixeira" onclick="apagarPedido('${c}')">🗑</button>
         Pedido: ${c}
         <div class="status-text">Status: ${statusTexto}</div>
@@ -1495,6 +1527,84 @@ document.addEventListener("apagarPedido", async (e) => {
   const c = e.detail;
   await deleteDoc(doc(db, "pedidosAtivos", c));
 });
+
+// ===== MATERIAL NÃO ENCONTRADO =====
+function abrirModalMaterialNaoEncontrado(codigo) {
+  document.getElementById("pedidoMNE").value = codigo;
+  document.getElementById("codigoOperadorMNE").value = "";
+  document.getElementById("nomeMaterialMNE").value = "";
+  document.getElementById("observacaoMNE").value = "";
+  document.getElementById("nomeOperadorMNE").style.display = "none";
+  document.getElementById("nomeOperadorMNE").innerText = "";
+  document.getElementById("modalMaterialNaoEncontrado").style.display = "flex";
+  document.getElementById("codigoOperadorMNE").focus();
+}
+
+function fecharModalMaterialNaoEncontrado() {
+  document.getElementById("modalMaterialNaoEncontrado").style.display = "none";
+}
+
+document.getElementById("codigoOperadorMNE")?.addEventListener("input", function() {
+  const codigo = this.value.trim();
+  const nomeOperador = usuarios[codigo];
+  const nomeBox = document.getElementById("nomeOperadorMNE");
+  
+  if (nomeOperador) {
+    nomeBox.innerText = `Operador: ${nomeOperador}`;
+    nomeBox.style.display = "block";
+    document.getElementById("nomeMaterialMNE").focus();
+  } else {
+    nomeBox.style.display = "none";
+  }
+});
+
+async function registrarMaterialNaoEncontrado() {
+  const codigo = document.getElementById("pedidoMNE").value.trim();
+  const codigoOperador = document.getElementById("codigoOperadorMNE").value.trim();
+  const nomeMaterial = document.getElementById("nomeMaterialMNE").value.trim();
+  const observacao = document.getElementById("observacaoMNE").value.trim();
+  
+  const nomeOperador = usuarios[codigoOperador];
+  
+  if (!codigo || !codigoOperador || !nomeMaterial) {
+    alert("Preencha todos os campos obrigatórios (Pedido, Operador, Material).");
+    return;
+  }
+  
+  if (!nomeOperador) {
+    alert("Operador inválido.");
+    return;
+  }
+  
+  const agora = agoraServidorMs();
+  
+  try {
+    // Registrar material não encontrado na coleção
+    await addDoc(collection(db, "materiaisNaoEncontrados"), {
+      pedido: codigo,
+      operador: nomeOperador,
+      codigoOperador: codigoOperador,
+      material: nomeMaterial,
+      observacao: observacao || null,
+      data: agora,
+      timestamp: new Date().toISOString()
+    });
+    
+    console.log("[MNE] Material não encontrado registrado:", { codigo, operador: nomeOperador, material: nomeMaterial });
+    
+    fecharModalMaterialNaoEncontrado();
+    alert("Material não encontrado registrado com sucesso!");
+    render();
+  } catch (err) {
+    console.error("[MNE] Erro ao registrar:", err);
+    alert("Erro ao registrar material não encontrado.");
+  }
+}
+
+// Expor funções globalmente
+window.abrirModalMaterialNaoEncontrado = abrirModalMaterialNaoEncontrado;
+window.fecharModalMaterialNaoEncontrado = fecharModalMaterialNaoEncontrado;
+window.registrarMaterialNaoEncontrado = registrarMaterialNaoEncontrado;
 
 function limparPedidos() {
   if (prompt("Senha:") === SENHA) {

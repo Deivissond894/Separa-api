@@ -233,6 +233,18 @@ body.modo-tv .card{
   align-items:center;
   justify-content:center;
   min-height:10vh;
+  position:relative;
+  overflow:hidden;
+}
+body.modo-tv .card-overlay-img{
+  position:absolute;
+  bottom:0;
+  right:0;
+  width:25%;
+  height:25%;
+  object-fit:contain;
+  opacity:0.8;
+  pointer-events:none;
 }
 body.modo-tv .timer{display:none}
 body.modo-tv .status-text{display:none}
@@ -1073,6 +1085,13 @@ function render() {
       } else {
         colSep2.appendChild(card);
       }
+      // Adicionar imagem aos cards ímpares (1º, 3º, 5º...)
+      if (i % 2 === 0) {
+        const img = document.createElement("img");
+        img.src = "8março.png";
+        img.className = "card-overlay-img";
+        card.appendChild(img);
+      }
     });
 
     pedidosConf.forEach((card, i) => {
@@ -1080,6 +1099,13 @@ function render() {
         colConf1.appendChild(card);
       } else {
         colConf2.appendChild(card);
+      }
+      // Adicionar imagem aos cards ímpares (1º, 3º, 5º...)
+      if (i % 2 === 0) {
+        const img = document.createElement("img");
+        img.src = "Mulher_8demarco.png";
+        img.className = "card-overlay-img";
+        card.appendChild(img);
       }
     });
 
@@ -1477,6 +1503,12 @@ async function carregarRelatorio() {
     listaDiv.innerHTML = "<p style='color: red;'>Erro ao carregar relatório</p>";
   }
 }
+function aplicarFiltrosRelatorio() {
+  paginaRelatorio = 1;
+  ultimoDocRelatorio = null;
+  carregarRelatorio();
+}
+
 function limparFiltrosRelatorio() {
   document.getElementById("filtroNumeroPedido").value = "";
   document.getElementById("filtroDataInicial").value = "";
@@ -1556,6 +1588,15 @@ async function exportarRelatorio() {
 window.carregarRelatorio = carregarRelatorio;
 window.limparFiltrosRelatorio = limparFiltrosRelatorio;
 window.exportarRelatorio = exportarRelatorio;
+window.abrirHistorico = abrirHistorico;
+window.fecharHistorico = fecharHistorico;
+window.limparRelatorio = limparRelatorio;
+window.abrirAndar = abrirAndar;
+window.fecharAndar = fecharAndar;
+window.limparPedidos = limparPedidos;
+window.toggleTV = toggleTV;
+window.apagarPedido = apagarPedido;
+window.aplicarFiltrosRelatorio = aplicarFiltrosRelatorio;
 
 // ===== UTIL =====
 async function apagarPedido(c) {
@@ -1586,72 +1627,7 @@ function toggleTV() {
 </script>
 
 <script>
-// Funções globais acessíveis do HTML
-window.abrirAndar = function() {
-  document.getElementById("modalAndar").style.display = "flex";
-}
-window.fecharAndar = function() {
-  document.getElementById("modalAndar").style.display = "none";
-}
-window.abrirHistorico = function() {
-  if (prompt("Senha:") !== "1617") return;
-  document.getElementById("modalHistorico").style.display = "flex";
-  window.renderHistorico();
-}
-window.fecharHistorico = function() {
-  document.getElementById("modalHistorico").style.display = "none";
-}
-window.limparRelatorio = function() {
-  if (prompt("Senha:") === "1617") {
-    fetch(window.location.origin + "/api/relatorio", {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ senha: "1617" })
-    }).then(() => window.renderHistorico());
-  }
-}
-window.apagarPedido = function(c) {
-  if (confirm("Apagar pedido " + c + "?")) {
-    // Será executado pela função no módulo
-    const event = new CustomEvent("apagarPedido", { detail: c });
-    document.dispatchEvent(event);
-  }
-}
-window.limparPedidos = function() {
-  if (prompt("Senha:") === "1617") {
-    fetch(window.location.origin + "/api/pedidos-limpar", {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ senha: "1617" })
-    }).then(() => window.render());
-  }
-}
-window.toggleTV = function() {
-  document.body.classList.toggle("modo-tv");
-  const btnTest = document.getElementById("btn-test-overlay");
-  if (document.body.classList.contains("modo-tv")) {
-    btnTest.style.display = "block";
-  } else {
-    btnTest.style.display = "none";
-  }
-  window.render();
-}
-window.testarOverlayTV = function() {
-  console.log("🧪 TESTE INICIADO");
-  console.log("Modo TV ativo?", document.body.classList.contains("modo-tv"));
-  
-  if (!document.body.classList.contains("modo-tv")) {
-    alert("Por favor, ative o Modo TV primeiro! 📺");
-    return;
-  }
-  
-  console.log("📺 Modo TV detectado! Chamando mostrarAlertaNaoEncontradoTV...");
-  console.log("Função existe?", typeof window.mostrarAlertaNaoEncontradoTV);
-  
-  // Chama a função diretamente
-  window.mostrarAlertaNaoEncontradoTV("TEST-001", "ABC123", Date.now(), Date.now() + 5*60*1000);
-  console.log("✅✅✅ OVERLAY DEVERIA ESTAR VISÍVEL AGORA!");
-}
+// ===== FUNÇÕES GLOBAIS - RANKING =====
 window.abrirRanked = function() {
   if(prompt("Senha:")!=="1617") return;
   console.log("Dados de ranking:", { ranked: window.ranked, historicoRanked: window.historicoRanked });
@@ -1672,7 +1648,7 @@ window.limparRanked = function() {
 window.listarRank = function(obj){
   let html="<div class='ranked-box'>";
   const lista=Object.entries(obj)
-    .filter(([nome]) => nome && nome !== "undefined" && nome !== "null") // Filtrar nomes vazios/undefined
+    .filter(([nome]) => nome && nome !== "undefined" && nome !== "null")
     .sort((a,b)=>b[1]-a[1]);
   lista.forEach(([nome,pontos])=> html+=`${usuarios[nome] || nome}: ${pontos}<br>`);
   html+="</div>";
@@ -1712,9 +1688,26 @@ window.renderRanked = function(){
   }
 }
 
+// ===== FUNÇÕES GLOBAIS - TV/OVERLAY =====
+window.testarOverlayTV = function() {
+  console.log("🧪 TESTE INICIADO");
+  console.log("Modo TV ativo?", document.body.classList.contains("modo-tv"));
+  
+  if (!document.body.classList.contains("modo-tv")) {
+    alert("Por favor, ative o Modo TV primeiro! 📺");
+    return;
+  }
+  
+  console.log("📺 Modo TV detectado! Chamando mostrarAlertaNaoEncontradoTV...");
+  console.log("Função existe?", typeof window.mostrarAlertaNaoEncontradoTV);
+  
+  window.mostrarAlertaNaoEncontradoTV("TEST-001", "ABC123", Date.now(), Date.now() + 5*60*1000);
+  console.log("✅✅✅ OVERLAY DEVERIA ESTAR VISÍVEL AGORA!");
+}
+
 // ===== EFEITO SONORO =====
 let lastSoundTime = 0;
-const soundDebounce = 300; // 300ms de intervalo mínimo entre sons
+const soundDebounce = 300;
 
 const audioSound = new Audio('recording-20260301-111943_rYCiiIkl.mp3');
 function playSound() {

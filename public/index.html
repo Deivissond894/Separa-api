@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <title>Separação de Pedidos</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Defina aqui a URL do seu backend (ex: https://seu-backend.fly.dev). Se vazio, usa window.location.origin -->
+  <meta name="backend-url" content="https://separa-brotas.fly.dev">
 <link rel="icon" type="image/png" href="logo-flutuante.png">
 
 <style>
@@ -434,14 +436,14 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebas
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 import { getFirestore, collection, getDocs, onSnapshot, doc, setDoc, deleteDoc, addDoc, query, orderBy, limit, startAfter, getCountFromServer } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-// Firebase config
+// Firebase config (apontando para o projeto separa-brotas)
 const firebaseConfig = {
-  apiKey: "AIzaSyAxl_UboOnSPX0uN5-5rXb0T9BWo506yc0",
-  authDomain: "separacao-51e82.firebaseapp.com",
-  projectId: "separacao-51e82",
-  storageBucket: "separacao-51e82.firebasestorage.app",
-  messagingSenderId: "43379104986",
-  appId: "1:43379104986:web:dc97b02ef8a61fe2e619e3"
+  apiKey: "AIzaSyCNSZBX2dfNw5wSOq_aOFP6mZFa-XRh8Dw",
+  authDomain: "separa-brotas.firebaseapp.com",
+  projectId: "separa-brotas",
+  storageBucket: "separa-brotas.firebasestorage.app",
+  messagingSenderId: "750902488503",
+  appId: "1:750902488503:web:224918ed3a7970782e0c32"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -452,7 +454,11 @@ const db = getFirestore(app);
 signInAnonymously(auth).catch(err => console.error("Auth error:", err));
 
 // URL base da API
-const API_URL = window.location.origin;
+// Primeiro tenta ler a meta tag 'backend-url'. Se estiver vazia, usa window.location.origin
+const _metaBackend = document.querySelector('meta[name="backend-url"]');
+const API_URL = (_metaBackend && _metaBackend.content && _metaBackend.content.trim() !== "")
+  ? _metaBackend.content.replace(/\/$/, '')
+  : window.location.origin;
 
 const usuarios = {
   1: "Jhonny", 2: "Jhonatas", 3: "Marcos", 4: "Renato",

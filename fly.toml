@@ -11,6 +11,7 @@ primary_region = 'gru'
 
 [env]
   PORT = '8080'
+  API_URL = 'https://separa-brotas.fly.dev'
 
 [http_service]
   internal_port = 8080
